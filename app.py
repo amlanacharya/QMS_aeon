@@ -268,6 +268,8 @@ def export_data():
                         as_attachment=True)
 
 # New admin token generation routes
+# Update the admin_generate_token route in app.py
+
 @app.route('/admin-generate-token', methods=['POST'])
 def admin_generate_token():
     if not is_admin():
@@ -296,6 +298,8 @@ def admin_generate_token():
     db.session.commit()
     
     flash(f'Token {token_number} generated successfully!', 'success')
+    
+    # Redirect directly to the print page instead of confirmation
     return redirect(url_for('admin_print_token', token_id=new_token.id))
 
 @app.route('/admin-print-token/<int:token_id>')
@@ -309,8 +313,29 @@ def admin_print_token(token_id):
         flash('Token not found', 'error')
         return redirect(url_for('admin'))
     
-    return render_template('admin_print_token.html', token=token)
-
+    # By default, use the thermal template
+    return render_template('thermal_print_token.html', token=token)
+@app.route('/print-token/<int:token_id>')
+def print_token(token_id):
+    token = Token.query.get(token_id)
+    if not token:
+        flash('Token not found', 'error')
+        return redirect(url_for('index'))
+    
+    # Use the thermal template by default
+    return render_template('thermal_print_token.html', token=token)
+@app.route('/standard-print-token/<int:token_id>')
+def standard_print_token(token_id):
+    token = Token.query.get(token_id)
+    if not token:
+        flash('Token not found', 'error')
+        return redirect(url_for('index'))
+    
+    # For users who specifically want the old format
+    if is_admin():
+        return render_template('admin_print_token_legacy.html', token=token)
+    else:
+        return render_template('token_print_legacy.html', token=token)
 @app.route('/reset-database', methods=['GET', 'POST'])
 def reset_database():
     if not is_admin():

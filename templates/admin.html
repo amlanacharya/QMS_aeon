@@ -84,7 +84,8 @@
                 <h4 class="mb-0">Generate Token for Customer</h4>
             </div>
             <div class="card-body">
-                <form action="{{ url_for('admin_generate_token') }}" method="post">
+                <form action="{{ url_for('admin_generate_token') }}" method="post" target="_blank">
+
                     <div class="mb-3">
                         <label for="application_number" class="form-label">Application Number</label>
                         <input type="text" class="form-control" id="application_number" name="application_number" required>
@@ -126,7 +127,7 @@
                                 <td>{{ token.token_number }}</td>
                                 <td>{{ token.customer_name }}</td>
                                 <td>
-                                    <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-sm btn-primary">
+                                    <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-sm btn-primary" target="_blank">
                                         <i class="bi bi-printer"></i> Print
                                     </a>
                                 </td>
@@ -177,8 +178,8 @@
                                 </td>
                                 <td>{{ token.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                 <td>
-                                    <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-printer"></i>
+                                    <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <i class="bi bi-printer"></i> Print
                                     </a>
                                 </td>
                             </tr>

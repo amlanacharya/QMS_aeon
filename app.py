@@ -311,5 +311,65 @@ def admin_print_token(token_id):
     
     return render_template('admin_print_token.html', token=token)
 
+@app.route('/reset-database', methods=['GET', 'POST'])
+def reset_database():
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        # Check for confirmation password
+        if request.form.get('confirm_password') == 'admin123':  # Using same password as admin login for simplicity
+            try:
+                # Export data before deletion if requested
+                if request.form.get('export_before_delete') == 'yes':
+                    # Save a backup of the data
+                    tokens = Token.query.all()
+                    data = []
+                    for token in tokens:
+                        data.append({
+                            'Token Number': token.token_number,
+                            'Application Number': token.application_number,
+                            'Phone Number': token.phone_number,
+                            'Customer Name': token.customer_name,
+                            'Status': token.status,
+                            'Created At': token.created_at
+                        })
+                    
+                    # Create a backup filename with timestamp
+                    backup_time = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+                    if not os.path.exists('backups'):
+                        os.makedirs('backups')
+                    
+                    backup_path = f'backups/tokens_backup_{backup_time}.csv'
+                    
+                    # Save to CSV
+                    pd.DataFrame(data).to_csv(backup_path, index=False)
+                    flash(f'Data backup created at {backup_path}', 'success')
+                
+                # Delete all tokens
+                Token.query.delete()
+                
+                # Reset counters if requested
+                if request.form.get('reset_counter') == 'yes':
+                    settings = get_settings()
+                    settings.last_token_number = 0
+                    settings.current_token_id = 0
+                
+                # Commit the changes
+                db.session.commit()
+                
+                flash('Database has been reset successfully', 'success')
+                return redirect(url_for('admin'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error resetting database: {str(e)}', 'error')
+                return redirect(url_for('reset_database'))
+        else:
+            flash('Invalid confirmation password', 'error')
+    
+    # GET request - show the confirmation form
+    return render_template('reset_database.html')
+
 if __name__ == '__main__':
     app.run(debug=True)

@@ -54,14 +54,16 @@
                                     Reset Token Counter
                                 </a>
                             </div>
-                            
+                            <h4 class="mt-4">Database Management</h4>
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('reset_database') }}" class="btn btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Reset Database
+                                </a>
+                            </div>
                             <h4 class="mt-4">Export Data</h4>
                             <div class="d-grid gap-2">
                                 <a href="{{ url_for('export_data', format='csv') }}" class="btn btn-outline-primary">
                                     Export as CSV
-                                </a>
-                                <a href="{{ url_for('export_data', format='excel') }}" class="btn btn-outline-success">
-                                    Export as Excel
                                 </a>
                             </div>
                             

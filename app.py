@@ -319,7 +319,7 @@ def reset_database():
     
     if request.method == 'POST':
         # Check for confirmation password
-        if request.form.get('confirm_password') == 'admin123':  # Using same password as admin login for simplicity
+        if request.form.get('confirm_password') == 'admin123': 
             try:
                 # Export data before deletion if requested
                 if request.form.get('export_before_delete') == 'yes':

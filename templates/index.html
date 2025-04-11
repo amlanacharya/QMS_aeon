@@ -1,0 +1,55 @@
+<!-- templates/index.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="token-container text-center">
+            <h2>NOW SERVING</h2>
+            {% if current_token %}
+                <div class="current-token">{{ current_token.token_number }}</div>
+            {% else %}
+                <div class="current-token">---</div>
+            {% endif %}
+            
+            <div class="next-token mt-3">
+                <strong>NEXT: </strong>
+                {% if next_token %}
+                    {{ next_token.token_number }}
+                {% else %}
+                    ---
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if settings.queue_active %}
+            <div class="token-form">
+                <h3 class="text-center mb-4">Get Your Token</h3>
+                <form action="{{ url_for('generate_token') }}" method="post">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" name="application_number" placeholder="Application No." required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="tel" class="form-control" name="phone_number" placeholder="Phone No." required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" class="form-control" name="customer_name" placeholder="Customer Name" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Generate Token</button>
+                    </div>
+                </form>
+            </div>
+        {% else %}
+            <div class="alert alert-warning text-center">
+                <h4>Queue is currently paused</h4>
+                <p>Token generation is temporarily disabled. Please check back later.</p>
+            </div>
+        {% endif %}
+        
+        <div class="text-center mt-4">
+            <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary btn-sm">Admin Login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

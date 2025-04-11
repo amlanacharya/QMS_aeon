@@ -1,0 +1,54 @@
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    .print-section, .print-section * {
+        visibility: visible;
+    }
+    
+    .print-section {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+    
+    /* Token styling for print */
+    .token-print {
+        font-family: 'Arial', sans-serif;
+        text-align: center;
+        padding: 20px;
+        border: 1px dashed #ccc;
+        width: 300px;
+        margin: 0 auto;
+    }
+    
+    .token-number-print {
+        font-size: 48px;
+        font-weight: bold;
+        margin: 15px 0;
+    }
+    
+    .token-details-print {
+        font-size: 14px;
+        margin-top: 15px;
+    }
+    
+    .token-date-print {
+        margin-top: 15px;
+        font-size: 12px;
+    }
+    
+    .token-footer-print {
+        margin-top: 20px;
+        font-size: 12px;
+        border-top: 1px solid #eee;
+        padding-top: 10px;
+    }
+}

@@ -1,11 +1,12 @@
-
+/* Improved print styles */
 @media print {
     body * {
         visibility: hidden;
     }
     
     .print-section, .print-section * {
-        visibility: visible;
+        visibility: visible !important;
+        display: block !important;
     }
     
     .print-section {

@@ -172,10 +172,12 @@ def admin():
     
     settings = get_settings()
     tokens = Token.query.order_by(Token.id.desc()).limit(20).all()
+    pending_tokens = Token.query.filter_by(status='PENDING').order_by(Token.id).all()
     
     return render_template('admin.html', 
                           settings=settings, 
-                          tokens=tokens)
+                          tokens=tokens,
+                          pending_tokens=pending_tokens)
 
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
@@ -264,6 +266,50 @@ def export_data():
                         mimetype='text/csv',
                         download_name='tokens_export.csv',
                         as_attachment=True)
+
+# New admin token generation routes
+@app.route('/admin-generate-token', methods=['POST'])
+def admin_generate_token():
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+    
+    settings = get_settings()
+    if not settings.queue_active:
+        flash('Queue is currently paused. Cannot generate new tokens.', 'error')
+        return redirect(url_for('admin'))
+    
+    application_number = request.form.get('application_number')
+    phone_number = request.form.get('phone_number')
+    customer_name = request.form.get('customer_name')
+    
+    token_number = generate_token_number()
+    
+    new_token = Token(
+        token_number=token_number,
+        application_number=application_number,
+        phone_number=phone_number,
+        customer_name=customer_name
+    )
+    
+    db.session.add(new_token)
+    db.session.commit()
+    
+    flash(f'Token {token_number} generated successfully!', 'success')
+    return redirect(url_for('admin_print_token', token_id=new_token.id))
+
+@app.route('/admin-print-token/<int:token_id>')
+def admin_print_token(token_id):
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+    
+    token = Token.query.get(token_id)
+    if not token:
+        flash('Token not found', 'error')
+        return redirect(url_for('admin'))
+    
+    return render_template('admin_print_token.html', token=token)
 
 if __name__ == '__main__':
     app.run(debug=True)

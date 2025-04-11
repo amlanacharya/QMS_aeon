@@ -1,26 +1,29 @@
-<!-- templates/token_confirmation.html -->
+<!-- templates/admin_print_token.html -->
 {% extends 'base.html' %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header bg-success text-white text-center">
-                <h4>Token Generated Successfully!</h4>
+            <div class="card-header bg-primary text-white text-center">
+                <h4>Print Token</h4>
             </div>
             <div class="card-body text-center">
                 <!-- This section will be visible on screen but hidden when printing -->
                 <div class="no-print">
-                    <h2>Your Token Number</h2>
+                    <h2>Token Number</h2>
                     <div class="display-1 fw-bold text-primary my-3">{{ token.token_number }}</div>
                     
-                    <p class="mb-4">Please keep this token number with you. Your token will be called when it's your turn.</p>
+                    <p><strong>Customer:</strong> {{ token.customer_name }}</p>
+                    <p><strong>Application No:</strong> {{ token.application_number }}</p>
+                    <p><strong>Phone No:</strong> {{ token.phone_number }}</p>
+                    <p><strong>Status:</strong> {{ token.status }}</p>
                     
                     <div class="d-grid gap-2">
                         <button onclick="window.print();" class="btn btn-primary btn-lg">
                             <i class="bi bi-printer"></i> Print Token
                         </button>
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Back to Home</a>
+                        <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">Back to Admin</a>
                     </div>
                 </div>
             </div>

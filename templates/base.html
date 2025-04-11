@@ -55,8 +55,12 @@
 <body>
     <div class="container">
         <div class="text-center">
-            <!-- Replace with your actual logo -->
-            <img src="static/logo.png" alt="Logo" class="logo">
+            <!-- Updated logo path using url_for -->
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
+            <!-- Fallback if logo doesn't exist -->
+            <noscript>
+                <h1 class="display-4">Token Queue System</h1>
+            </noscript>
         </div>
         
         <!-- Flash messages -->
@@ -79,5 +83,15 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Script to handle missing logo -->
+    <script>
+        document.querySelector('.logo').addEventListener('error', function() {
+            this.style.display = 'none';
+            let heading = document.createElement('h1');
+            heading.className = 'display-4';
+            heading.textContent = 'Token Queue System';
+            this.parentNode.appendChild(heading);
+        });
+    </script>
 </body>
 </html>

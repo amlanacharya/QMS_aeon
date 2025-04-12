@@ -5,6 +5,11 @@ from datetime import datetime
 import os
 import pandas as pd
 import io
+import qrcode
+import base64
+import io
+import urllib.parse
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -30,6 +35,7 @@ class Token(db.Model):
     customer_name = db.Column(db.String(100))
     status = db.Column(db.String(20), default='PENDING')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    printer_mac = db.Column(db.String(20), default='')
 
 # System settings model
 class Settings(db.Model):
@@ -47,6 +53,38 @@ with app.app_context():
         db.session.commit()
 
 # Helper functions
+def generate_print_qr(content, device_address=None):
+    """Generate a QR code for printing the content via the Bluetooth printing app"""
+    # Create the content URI for your app
+    # We're using "bluetoothprint://" as a custom scheme that would launch your app
+    url = f"bluetoothprint://print?content={urllib.parse.quote(content)}"
+    
+    # Add device address if provided
+    if device_address:
+        url += f"&device_address={device_address}"
+    
+    # Generate QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    
+    # Create an image from the QR Code
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Save the image to a bytes buffer
+    buffer = io.BytesIO()
+    img.save(buffer)
+    buffer.seek(0)
+    
+    # Convert to base64 for embedding in HTML
+    img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return f"data:image/png;base64,{img_str}"
+
 def get_settings():
     return Settings.query.first()
 
@@ -395,6 +433,55 @@ def reset_database():
     
     # GET request - show the confirmation form
     return render_template('reset_database.html')
+@app.route('/print-qr/<int:token_id>')
+def print_qr(token_id):
+    """Generate a QR code for printing a specific token"""
+    token = Token.query.get(token_id)
+    if not token:
+        flash('Token not found', 'error')
+        return redirect(url_for('index'))
+    
+    # Format content for printing
+    content = f"""Token: {token.token_number}
+Name: {token.customer_name}
+App No: {token.application_number}
+Phone: {token.phone_number}
+Time: {token.created_at.strftime('%Y-%m-%d %H:%M')}
+
+Please wait for your number to be called
+Thank you for your patience!"""
+    
+    # Get device address from configuration if available
+    device_address = None
+    
+    # Generate QR code
+    qr_code = generate_print_qr(content, device_address)
+    
+    # Pass the is_admin value to the template
+    return render_template('print_qr.html', token=token, qr_code=qr_code, content=content, is_admin=is_admin())
+
+@app.route('/printer-settings', methods=['GET', 'POST'])
+def printer_settings():
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        printer_mac = request.form.get('printer_mac')
+        # Save the printer MAC address to settings
+        settings = get_settings()
+        # You'll need to add the printer_mac column to your Settings model
+        if hasattr(settings, 'printer_mac'):
+            settings.printer_mac = printer_mac
+            db.session.commit()
+            flash('Printer settings updated', 'success')
+        else:
+            flash('Printer settings not available', 'error')
+    
+    settings = get_settings()
+    printer_mac = getattr(settings, 'printer_mac', '') if hasattr(settings, 'printer_mac') else ''
+    
+    return render_template('printer_settings.html', printer_mac=printer_mac)
 
 if __name__ == '__main__':
     app.run(debug=True)

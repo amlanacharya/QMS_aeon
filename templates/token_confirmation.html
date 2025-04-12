@@ -18,6 +18,12 @@
                     <a href="{{ url_for('print_token', token_id=token.id) }}" class="btn btn-primary btn-lg" target="_blank">
                         <i class="bi bi-printer"></i> Print Token
                     </a>
+                    
+                    <!-- Add Bluetooth Print QR code button here -->
+                    <a href="{{ url_for('print_qr', token_id=token.id) }}" class="btn btn-info">
+                        <i class="bi bi-bluetooth"></i> Print via Bluetooth
+                    </a>
+                    
                     <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Back to Home</a>
                 </div>
                 

@@ -89,6 +89,11 @@
       Please wait for your number to be called
       <p>Thank you for your patience!</p>
     </div>
+    
+    <div style="text-align: center; margin-top: 20px; padding: 10px; border-top: 1px dashed #ccc;">
+      <p style="font-size: 10pt;">Scan to print via Bluetooth:</p>
+      <img src="{{ url_for('print_qr', token_id=token.id) }}" alt="Print QR" style="width: 100px; height: 100px;">
+    </div>
   </div>
 </body>
 </html>

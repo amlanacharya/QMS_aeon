@@ -54,6 +54,18 @@
                                     Reset Token Counter
                                 </a>
                             </div>
+                            <h4 class="mt-4">Printer Management</h4>
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('printer_settings') }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-printer"></i> Bluetooth Printer Settings
+                                </a>
+                                
+                                {% if current_token %}
+                                <a href="{{ url_for('print_qr', token_id=current_token.id) }}" class="btn btn-info">
+                                    <i class="bi bi-bluetooth"></i> Print Current Token via Bluetooth
+                                </a>
+                                {% endif %}
+                            </div>
                             <h4 class="mt-4">Database Management</h4>
                             <div class="d-grid gap-2">
                                 <a href="{{ url_for('reset_database') }}" class="btn btn-outline-danger">

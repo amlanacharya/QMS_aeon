@@ -1,0 +1,47 @@
+<!-- templates/printer_settings.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4>Bluetooth Printer Settings</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="printer_mac" class="form-label">Default Printer MAC Address</label>
+                        <input type="text" class="form-control" id="printer_mac" name="printer_mac" 
+                               value="{{ printer_mac }}" placeholder="00:00:00:00:00:00">
+                        <div class="form-text">
+                            Enter the MAC address of your default Bluetooth printer.
+                            This will be used for direct printing via QR code.
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </div>
+                </form>
+                
+                <div class="mt-4">
+                    <h5>How to Find Your Printer's MAC Address</h5>
+                    <ol>
+                        <li>Go to your device's Bluetooth settings</li>
+                        <li>Find the printer in the list of paired devices</li>
+                        <li>On most devices, tap on the settings icon next to the printer name</li>
+                        <li>The MAC address will be displayed (format: XX:XX:XX:XX:XX:XX)</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">Back to Admin</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+{% endblock %}

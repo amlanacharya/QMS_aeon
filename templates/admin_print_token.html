@@ -23,6 +23,12 @@
                         <button onclick="window.print();" class="btn btn-primary btn-lg">
                             <i class="bi bi-printer"></i> Print Token
                         </button>
+                        
+                        <!-- Add Bluetooth Print QR code button here -->
+                        <a href="{{ url_for('print_qr', token_id=token.id) }}" class="btn btn-info">
+                            <i class="bi bi-bluetooth"></i> Print via Bluetooth
+                        </a>
+                        
                         <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">Back to Admin</a>
                     </div>
                 </div>

@@ -1,0 +1,117 @@
+<!-- templates/bluetooth_print.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white text-center">
+                <h4>Bluetooth Direct Print</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> This feature requires Chrome or Edge browser and a compatible Bluetooth printer.
+                </div>
+                
+                <div class="print-preview p-3 bg-light mb-4">
+                    <h5>Print Preview:</h5>
+                    <pre id="printContent" class="mb-0">{{ print_content }}</pre>
+                </div>
+                
+                <div class="text-center mb-4">
+                    <button id="connectBtn" class="btn btn-primary">
+                        <i class="bi bi-bluetooth"></i> Connect to Printer
+                    </button>
+                    <button id="printBtn" class="btn btn-success" disabled>
+                        <i class="bi bi-printer"></i> Print Token
+                    </button>
+                </div>
+                
+                <div id="statusMessages" class="alert alert-secondary">
+                    Ready to connect...
+                </div>
+            </div>
+            <div class="card-footer text-center">
+                <a href="{{ url_for('admin') if is_admin() else 'index' }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<style>
+    .print-preview {
+        font-family: monospace;
+        white-space: pre-wrap;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/bluetooth-print.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const connectBtn = document.getElementById('connectBtn');
+        const printBtn = document.getElementById('printBtn');
+        const statusMessages = document.getElementById('statusMessages');
+        const printContent = document.getElementById('printContent').textContent;
+        
+        // Check if Web Bluetooth is supported
+        if (!navigator.bluetooth) {
+            statusMessages.className = 'alert alert-danger';
+            statusMessages.textContent = 'Web Bluetooth is not supported in your browser. Please use Chrome or Edge.';
+            connectBtn.disabled = true;
+            return;
+        }
+        
+        connectBtn.addEventListener('click', async function() {
+            statusMessages.className = 'alert alert-info';
+            statusMessages.textContent = 'Connecting to printer...';
+            
+            try {
+                const connected = await window.bluetoothPrinter.connect();
+                if (connected) {
+                    statusMessages.className = 'alert alert-success';
+                    statusMessages.textContent = 'Connected to printer successfully!';
+                    printBtn.disabled = false;
+                    connectBtn.disabled = true;
+                } else {
+                    statusMessages.className = 'alert alert-warning';
+                    statusMessages.textContent = 'Failed to connect to printer. Please try again.';
+                }
+            } catch (error) {
+                statusMessages.className = 'alert alert-danger';
+                statusMessages.textContent = 'Error: ' + error.message;
+            }
+        });
+        
+        printBtn.addEventListener('click', async function() {
+            statusMessages.className = 'alert alert-info';
+            statusMessages.textContent = 'Printing...';
+            printBtn.disabled = true;
+            
+            try {
+                const success = await window.bluetoothPrinter.print(printContent);
+                if (success) {
+                    statusMessages.className = 'alert alert-success';
+                    statusMessages.textContent = 'Printed successfully!';
+                } else {
+                    statusMessages.className = 'alert alert-warning';
+                    statusMessages.textContent = 'Failed to print. Please try reconnecting.';
+                    connectBtn.disabled = false;
+                }
+            } catch (error) {
+                statusMessages.className = 'alert alert-danger';
+                statusMessages.textContent = 'Print error: ' + error.message;
+                connectBtn.disabled = false;
+            }
+        });
+    });
+</script>
+{% endblock %}

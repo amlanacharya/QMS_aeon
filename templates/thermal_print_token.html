@@ -89,6 +89,11 @@
       Please wait for your number to be called
       <p>Thank you for your patience!</p>
     </div>
+    <div class="mt-3">
+      <a href="{{ url_for('bluetooth_print', token_id=token.id) }}" class="btn btn-sm btn-info">
+          <i class="bi bi-bluetooth"></i> Print via Bluetooth
+      </a>
+  </div>
   </div>
 </body>
 </html>

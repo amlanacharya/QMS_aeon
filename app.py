@@ -396,5 +396,26 @@ def reset_database():
     # GET request - show the confirmation form
     return render_template('reset_database.html')
 
+@app.route('/bluetooth-print/<int:token_id>')
+def bluetooth_print(token_id):
+    """Page for direct Bluetooth printing"""
+    token = Token.query.get(token_id)
+    if not token:
+        flash('Token not found', 'error')
+        return redirect(url_for('index'))
+    
+    # Format content for printing
+    print_content = f"""
+Token: {token.token_number}
+Name: {token.customer_name}
+App No: {token.application_number}
+Phone: {token.phone_number}
+Time: {token.created_at.strftime('%Y-%m-%d %H:%M')}
+
+Please wait for your number to be called
+Thank you for your patience!
+"""
+    
+    return render_template('bluetooth_print.html', token=token, print_content=print_content)
 if __name__ == '__main__':
     app.run(debug=True)

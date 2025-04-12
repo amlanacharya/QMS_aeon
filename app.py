@@ -1,15 +1,36 @@
 # app.py
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify, g
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 import pandas as pd
 import io
+import logging
+
+# Import our custom modules
+from printer_service import create_printer_service, PrinterConfig
+from bluetooth_manager import create_bluetooth_manager
+from settings_service import create_settings_service
+from printer_api import printer_bp
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger('app')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tokens.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Register the printer API blueprint
+app.register_blueprint(printer_bp)
 
 # Custom context processor for current year
 @app.context_processor
@@ -18,6 +39,7 @@ def inject_now():
         return datetime.utcnow().strftime('%Y')
     return {'now': now}
 
+# Database setup
 db = SQLAlchemy(app)
 
 # Token model
@@ -38,6 +60,18 @@ class Settings(db.Model):
     current_token_id = db.Column(db.Integer, default=0)
     last_token_number = db.Column(db.Integer, default=0)
 
+# Create database connection for the settings service
+@app.before_request
+def before_request():
+    # Create a database connection for this request
+    g.db = db.engine.raw_connection()
+
+@app.teardown_request
+def teardown_request(exception):
+    # Close database connection for this request
+    if hasattr(g, 'db'):
+        g.db.close()
+
 # Create tables if they don't exist
 with app.app_context():
     db.create_all()
@@ -45,6 +79,10 @@ with app.app_context():
     if not Settings.query.first():
         db.session.add(Settings(queue_active=True, current_token_id=0, last_token_number=0))
         db.session.commit()
+
+# Create services
+settings_service = create_settings_service()
+bluetooth_manager = create_bluetooth_manager()
 
 # Helper functions
 def get_settings():
@@ -119,7 +157,13 @@ def token_confirmation(token_id):
         flash('Token not found', 'error')
         return redirect(url_for('index'))
     
-    return render_template('token_confirmation.html', token=token)
+    # Check if we're on Android or have Bluetooth capabilities
+    user_agent = request.headers.get('User-Agent', '').lower()
+    # If Android detected or query param set, use enhanced template
+    if 'android' in user_agent or request.args.get('enhanced') == '1':
+        return render_template('enhanced_token_confirmation.html', token=token)
+    else:
+        return render_template('token_confirmation.html', token=token)
 
 @app.route('/next-token')
 def next_token():
@@ -268,8 +312,6 @@ def export_data():
                         as_attachment=True)
 
 # New admin token generation routes
-# Update the admin_generate_token route in app.py
-
 @app.route('/admin-generate-token', methods=['POST'])
 def admin_generate_token():
     if not is_admin():
@@ -315,6 +357,7 @@ def admin_print_token(token_id):
     
     # By default, use the thermal template
     return render_template('thermal_print_token.html', token=token)
+
 @app.route('/print-token/<int:token_id>')
 def print_token(token_id):
     token = Token.query.get(token_id)
@@ -324,6 +367,7 @@ def print_token(token_id):
     
     # Use the thermal template by default
     return render_template('thermal_print_token.html', token=token)
+
 @app.route('/standard-print-token/<int:token_id>')
 def standard_print_token(token_id):
     token = Token.query.get(token_id)
@@ -336,6 +380,7 @@ def standard_print_token(token_id):
         return render_template('admin_print_token_legacy.html', token=token)
     else:
         return render_template('token_print_legacy.html', token=token)
+
 @app.route('/reset-database', methods=['GET', 'POST'])
 def reset_database():
     if not is_admin():
@@ -396,5 +441,78 @@ def reset_database():
     # GET request - show the confirmation form
     return render_template('reset_database.html')
 
+# New route for printer settings
+@app.route('/printer-settings')
+def printer_settings():
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+    
+    return render_template('printer_settings.html')
+
+# New direct printing endpoint for tokens
+@app.route('/api/direct-print/<int:token_id>', methods=['POST'])
+def direct_print_token(token_id):
+    token = Token.query.get(token_id)
+    if not token:
+        return jsonify({
+            'success': False,
+            'message': 'Token not found'
+        }), 404
+    
+    try:
+        # Get printer config from settings
+        printer_config = settings_service.get_printer_config()
+        
+        # Check if we have a printer configured
+        if not printer_config.get('bluetooth_address'):
+            return jsonify({
+                'success': False,
+                'message': 'Printer not configured',
+                'needs_setup': True
+            }), 400
+        
+        # Create printer service
+        printer_service = create_printer_service(printer_config)
+        
+        # Connect and print
+        connected = printer_service.connect()
+        if not connected:
+            return jsonify({
+                'success': False,
+                'message': 'Could not connect to printer',
+                'needs_setup': False
+            }), 400
+        
+        # Print token
+        success = printer_service.print_token(
+            token_number=token.token_number,
+            customer_name=token.customer_name,
+            application_number=token.application_number,
+            phone_number=token.phone_number,
+            created_at=token.created_at
+        )
+        
+        # Disconnect
+        printer_service.disconnect()
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Token {token.token_number} printed successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Printing failed'
+            }), 400
+    
+    except Exception as e:
+        logger.error(f"Error in direct print: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')

@@ -416,6 +416,6 @@ Please wait for your number to be called
 Thank you for your patience!
 """
     
-    return render_template('bluetooth_print.html', token=token, print_content=print_content)
+    return render_template('bluetooth_print.html', token=token, print_content=print_content, is_admin=is_admin)
 if __name__ == '__main__':
     app.run(debug=True)

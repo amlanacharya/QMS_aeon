@@ -4,6 +4,14 @@
 {% block content %}
 <div class="row">
     <div class="col-md-12 mb-4">
+        <!-- Queue Status Indicator -->
+        <div class="queue-status-indicator mb-3 text-center">
+            <div class="badge bg-{{ 'success' if settings.queue_active else 'danger' }} p-2 fs-5">
+                <i class="bi {{ 'bi-play-circle-fill' if settings.queue_active else 'bi-pause-circle-fill' }} me-2"></i>
+                Queue Status: {{ 'ACTIVE' if settings.queue_active else 'PAUSED' }}
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Admin Dashboard</h4>
@@ -21,7 +29,7 @@
                                     <p>Reason: {{ current_token.visit_reason }}</p>
                                     {% if current_token.recall_count > 0 %}
                                         <p class="text-warning">
-                                            <i class="bi bi-megaphone"></i> 
+                                            <i class="bi bi-megaphone"></i>
                                             Recalled {{ current_token.recall_count }} times
                                             <br>
                                             <small>Last recall: {{ current_token.last_recalled_at.strftime('%H:%M:%S') }}</small>
@@ -32,38 +40,55 @@
                                     <p>No active token</p>
                                 {% endif %}
                             </div>
-                            
+
                             <div class="next-token mt-3">
                                 <strong>NEXT: </strong>
-                                {% if next_token %}
-                                    {{ next_token.token_number }}
-                                {% else %}
-                                    ---
-                                {% endif %}
+                                <span>
+                                    {% if next_token %}
+                                        {{ next_token.token_number }}
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </span>
                             </div>
                         </div>
-                        
-                        <div class="d-flex justify-content-center mt-3 gap-2">
-                            <a href="{{ url_for('next_token') }}" class="btn btn-primary">Next</a>
-                            <a href="{{ url_for('recall_token') }}" class="btn btn-warning" 
-                               {% if not current_token %}disabled{% endif %}>
-                                <i class="bi bi-megaphone"></i> Recall
-                                {% if current_token and current_token.recall_count > 0 %}
-                                    ({{ current_token.recall_count }})
-                                {% endif %}
-                            </a>
-                            <a href="{{ url_for('skip_token') }}" class="btn btn-danger">Skip</a>
+
+                        <!-- Token action buttons with improved visual hierarchy -->
+                        <div class="token-actions-container mt-4">
+                            <!-- Primary action with increased prominence -->
+                            <div class="primary-action-container text-center mb-2">
+                                <a href="{{ url_for('next_token') }}" class="btn btn-primary btn-lg primary-action-btn">
+                                    <i class="bi bi-arrow-right-circle-fill me-2"></i>Next Token
+                                </a>
+                            </div>
+
+                            <!-- Secondary actions with less visual weight -->
+                            <div class="d-flex justify-content-center gap-3">
+                                <a href="{{ url_for('recall_token') }}" class="btn btn-outline-warning"
+                                   {% if not current_token %}disabled{% endif %}>
+                                    <i class="bi bi-megaphone"></i> Recall
+                                    {% if current_token and current_token.recall_count > 0 %}
+                                        ({{ current_token.recall_count }})
+                                    {% endif %}
+                                </a>
+                                <a href="{{ url_for('skip_token') }}" class="btn btn-outline-danger"
+                                   onclick="return confirm('Are you sure you want to skip this token?')">
+                                    <i class="bi bi-skip-forward"></i> Skip
+                                </a>
+                            </div>
                         </div>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <div class="admin-actions">
                             <h4>Queue Management</h4>
                             <div class="d-grid gap-2">
-                                <a href="{{ url_for('toggle_queue') }}" class="btn btn-{{ 'danger' if settings.queue_active else 'success' }}">
+                                <a href="{{ url_for('toggle_queue') }}" class="btn btn-{{ 'danger' if settings.queue_active else 'success' }} btn-lg">
+                                    <i class="bi {{ 'bi-pause-circle' if settings.queue_active else 'bi-play-circle' }} me-2"></i>
                                     {{ 'Stop Queue' if settings.queue_active else 'Start Queue' }}
                                 </a>
-                                <a href="{{ url_for('reset_counter') }}" class="btn btn-secondary" onclick="return confirm('Are you sure you want to reset the token counter to 0?')">
+                                <a href="{{ url_for('reset_counter') }}" class="btn btn-outline-secondary" onclick="return confirm('Are you sure you want to reset the token counter to 0?')">
+                                    <i class="bi bi-arrow-counterclockwise me-2"></i>
                                     Reset Token Counter
                                 </a>
                             </div>
@@ -79,7 +104,7 @@
                                     Export as CSV
                                 </a>
                             </div>
-                            
+
                             <p class="text-muted mt-2">
                                 Current Token Counter: {{ settings.last_token_number }}
                             </p>
@@ -89,7 +114,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- New section for admin token generation -->
     <div class="col-md-6 mb-4">
         <div class="card">
@@ -130,7 +155,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-6 mb-4">
         <div class="card">
             <div class="card-header bg-secondary text-white">
@@ -169,7 +194,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-12">
         <div class="card">
             <div class="card-header bg-secondary text-white">
@@ -211,14 +236,14 @@
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         {% if token.status != 'PENDING' %}
-                                        <a href="{{ url_for('revert_token_status', token_id=token.id) }}" 
+                                        <a href="{{ url_for('revert_token_status', token_id=token.id) }}"
                                            class="btn btn-outline-warning"
                                            onclick="return confirm('Revert this token status to PENDING?')">
                                             <i class="bi bi-arrow-counterclockwise"></i>
                                         </a>
                                         {% endif %}
                                         {% if token.status == 'PENDING' %}
-                                        <a href="{{ url_for('delete_token', token_id=token.id) }}" 
+                                        <a href="{{ url_for('delete_token', token_id=token.id) }}"
                                            class="btn btn-outline-danger"
                                            onclick="return confirm('Are you sure you want to delete this token?')">
                                             <i class="bi bi-trash"></i>
@@ -244,7 +269,7 @@ function toggleCustomReason() {
     const reasonSelect = document.getElementById('visit_reason');
     const customReasonDiv = document.getElementById('custom_reason_div');
     const customReasonInput = document.getElementById('custom_reason');
-    
+
     if (reasonSelect.value === 'other') {
         customReasonDiv.style.display = 'block';
         customReasonInput.required = true;

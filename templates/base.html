@@ -42,6 +42,59 @@
         .admin-actions {
             margin-top: 20px;
         }
+
+        /* Styles for improved action button hierarchy */
+        .token-actions-container {
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+
+        .primary-action-btn {
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 123, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .primary-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 123, 255, 0.3);
+        }
+
+        .primary-action-container {
+            margin-bottom: 15px;
+        }
+
+        /* Queue status indicator styling */
+        .queue-status-indicator .badge {
+            font-size: 1.1rem;
+            padding: 8px 16px;
+            border-radius: 50px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Real-time notification styles */
+        .token-update-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #007bff;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .token-update-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
         footer {
             margin-top: 40px;
             padding: 20px 0;
@@ -62,7 +115,12 @@
                 <h1 class="display-4">Token Queue System</h1>
             </noscript>
         </div>
-        
+
+        <!-- Real-time notification element -->
+        <div class="token-update-notification" id="tokenUpdateNotification" role="alert">
+            Token status updated
+        </div>
+
         <!-- Flash messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -73,16 +131,19 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <!-- Main content -->
         {% block content %}{% endblock %}
-        
+
         <footer class="text-center">
             <p>Token Queue Management System &copy; {{ now() }}</p>
         </footer>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Socket.IO client library -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
     <!-- Script to handle missing logo -->
     <script>
         document.querySelector('.logo').addEventListener('error', function() {
@@ -93,12 +154,127 @@
             this.parentNode.appendChild(heading);
         });
     </script>
+
+    <!-- Socket.IO connection and event handling -->
+    <script>
+        // Connect to the Socket.IO server
+        const socket = io();
+
+        // Listen for queue status updates
+        socket.on('queue_status', function(data) {
+            console.log('Queue status update received:', data);
+            updateQueueDisplay(data);
+        });
+
+        // Function to update the queue display
+        function updateQueueDisplay(data) {
+            let hasChanged = false;
+            let notificationMessage = '';
+
+            // Update current token display if it exists on the page
+            const currentTokenElement = document.querySelector('.current-token');
+            if (currentTokenElement) {
+                if (data.current_token) {
+                    // Check if token has changed
+                    if (currentTokenElement.textContent !== data.current_token.token_number) {
+                        hasChanged = true;
+                        notificationMessage = `Now serving: ${data.current_token.token_number}`;
+                    }
+
+                    currentTokenElement.textContent = data.current_token.token_number;
+
+                    // Update customer name and reason if those elements exist
+                    const customerNameElement = document.querySelector('.current-token-info p:nth-child(2)');
+                    if (customerNameElement && data.current_token.customer_name) {
+                        customerNameElement.textContent = 'Customer: ' + data.current_token.customer_name;
+                    }
+
+                    const reasonElement = document.querySelector('.current-token-info p:nth-child(3)');
+                    if (reasonElement && data.current_token.visit_reason) {
+                        reasonElement.textContent = 'Reason: ' + data.current_token.visit_reason;
+                    }
+                } else {
+                    if (currentTokenElement.textContent !== '---') {
+                        hasChanged = true;
+                        notificationMessage = 'No active token';
+                    }
+                    currentTokenElement.textContent = '---';
+                }
+            }
+
+            // Update next token display if it exists
+            const nextTokenElement = document.querySelector('.next-token strong + span');
+            if (nextTokenElement) {
+                if (data.next_token) {
+                    // Check if next token has changed
+                    if (nextTokenElement.textContent.trim() !== data.next_token.token_number) {
+                        hasChanged = true;
+                        if (!notificationMessage) {
+                            notificationMessage = `Next token: ${data.next_token.token_number}`;
+                        }
+                    }
+                    nextTokenElement.textContent = data.next_token.token_number;
+                } else {
+                    if (nextTokenElement.textContent.trim() !== '---') {
+                        hasChanged = true;
+                    }
+                    nextTokenElement.textContent = '---';
+                }
+            }
+
+            // Update queue status indicator if it exists
+            const queueStatusElement = document.querySelector('.queue-status-indicator .badge');
+            if (queueStatusElement) {
+                const wasActive = queueStatusElement.classList.contains('bg-success');
+                if (data.queue_active !== wasActive) {
+                    hasChanged = true;
+                    notificationMessage = data.queue_active ? 'Queue is now ACTIVE' : 'Queue is now PAUSED';
+                }
+
+                if (data.queue_active) {
+                    queueStatusElement.className = 'badge bg-success p-2 fs-5';
+                    queueStatusElement.innerHTML = '<i class="bi bi-play-circle-fill me-2"></i> Queue Status: ACTIVE';
+                } else {
+                    queueStatusElement.className = 'badge bg-danger p-2 fs-5';
+                    queueStatusElement.innerHTML = '<i class="bi bi-pause-circle-fill me-2"></i> Queue Status: PAUSED';
+                }
+            }
+
+            // Show notification if something changed
+            if (hasChanged && notificationMessage) {
+                showNotification(notificationMessage);
+            }
+        }
+
+        // Function to show notification
+        function showNotification(message) {
+            const notification = document.getElementById('tokenUpdateNotification');
+            notification.textContent = message;
+            notification.classList.add('show');
+
+            // Play notification sound
+            playNotificationSound();
+
+            // Hide notification after 5 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
+
+        // Function to play notification sound
+        function playNotificationSound() {
+            // Create audio element
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log('Error playing sound:', e));
+        }
+    </script>
     <script>
         function toggleCustomReason() {
             const reasonSelect = document.getElementById('visit_reason');
             const customReasonDiv = document.getElementById('custom_reason_div');
             const customReasonInput = document.getElementById('custom_reason');
-            
+
             if (reasonSelect.value === 'other') {
                 customReasonDiv.style.display = 'block';
                 customReasonInput.required = true;

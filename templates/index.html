@@ -11,17 +11,19 @@
             {% else %}
                 <div class="current-token">---</div>
             {% endif %}
-            
+
             <div class="next-token mt-3">
                 <strong>NEXT: </strong>
-                {% if next_token %}
-                    {{ next_token.token_number }}
-                {% else %}
-                    ---
-                {% endif %}
+                <span>
+                    {% if next_token %}
+                        {{ next_token.token_number }}
+                    {% else %}
+                        ---
+                    {% endif %}
+                </span>
             </div>
         </div>
-        
+
         {% if settings.queue_active %}
             <div class="token-form">
                 <h3 class="text-center mb-4">Get Your Token</h3>
@@ -58,7 +60,7 @@
                 <p>Token generation is temporarily disabled. Please check back later.</p>
             </div>
         {% endif %}
-        
+
         <div class="text-center mt-4">
             <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary btn-sm">Admin Login</a>
         </div>

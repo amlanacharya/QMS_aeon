@@ -4,17 +4,20 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <div class="card">
+        <div class="card border-danger">
             <div class="card-header bg-danger text-white text-center">
-                <h4>Reset Database</h4>
+                <h4><i class="bi bi-exclamation-triangle-fill me-2"></i>Reset Database</h4>
             </div>
             <div class="card-body">
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle-fill"></i> 
-                    <strong>Warning:</strong> This action will delete all token records from the database. 
-                    This operation cannot be undone unless you create a backup first.
+                <div class="alert alert-danger">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-exclamation-triangle-fill fs-1 me-3"></i>
+                        <h5 class="mb-0">CRITICAL WARNING</h5>
+                    </div>
+                    <p>This action will <strong>permanently delete ALL token records</strong> from the database.</p>
+                    <p>This operation <strong>cannot be undone</strong> unless you create a backup first.</p>
                 </div>
-                
+
                 <form action="{{ url_for('reset_database') }}" method="post">
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="export_before_delete" name="export_before_delete" value="yes" checked>
@@ -22,24 +25,33 @@
                             Create a backup CSV file before deletion
                         </label>
                     </div>
-                    
+
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="reset_counter" name="reset_counter" value="yes">
                         <label class="form-check-label" for="reset_counter">
                             Reset token counter to 0
                         </label>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="confirm_password" class="form-label">Admin Password (to confirm)</label>
                         <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                     </div>
-                    
+
+                    <div class="mb-3">
+                        <label for="confirm_text" class="form-label">Type "RESET DATABASE" to confirm</label>
+                        <input type="text" class="form-control" id="confirm_text" required
+                               pattern="RESET DATABASE" title="Please type RESET DATABASE exactly as shown">
+                        <div class="form-text text-danger">This additional confirmation helps prevent accidental resets.</div>
+                    </div>
+
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you ABSOLUTELY sure you want to reset the database? This cannot be undone!')">
-                            Reset Database
+                        <button type="submit" id="reset-btn" class="btn btn-danger" disabled>
+                            <i class="bi bi-trash me-2"></i>Reset Database
                         </button>
-                        <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Cancel and Return to Admin
+                        </a>
                     </div>
                 </form>
             </div>
@@ -50,4 +62,62 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<style>
+    /* Pulsing effect for the warning icon */
+    .alert-danger .bi-exclamation-triangle-fill {
+        color: #dc3545;
+        animation: pulse-warning 2s infinite;
+    }
+
+    @keyframes pulse-warning {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    /* Shake animation for incorrect input */
+    .shake {
+        animation: shake 0.5s;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmText = document.getElementById('confirm_text');
+    const resetBtn = document.getElementById('reset-btn');
+    const form = document.querySelector('form');
+
+    // Enable button only when text matches exactly
+    confirmText.addEventListener('input', function() {
+        if (this.value === 'RESET DATABASE') {
+            resetBtn.disabled = false;
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+        } else {
+            resetBtn.disabled = true;
+            this.classList.remove('is-valid');
+            if (this.value.length >= 5) {
+                this.classList.add('is-invalid');
+            }
+        }
+    });
+
+    // Add final confirmation dialog
+    form.addEventListener('submit', function(e) {
+        if (!confirm('FINAL WARNING: You are about to permanently delete all token data. This action cannot be undone. Proceed?')) {
+            e.preventDefault();
+            return false;
+        }
+
+        // Show loading state on button
+        resetBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+        resetBtn.disabled = true;
+    });
+});
+</script>
 {% endblock %}

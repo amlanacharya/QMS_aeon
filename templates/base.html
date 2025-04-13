@@ -30,6 +30,38 @@
             font-size: 1.5rem;
             color: #6c757d;
         }
+
+        /* Token status header with LIVE indicator */
+        .token-status-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .small-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 50px;
+            position: relative;
+        }
+
+        .small-badge::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: white;
+            border-radius: 50%;
+            margin-right: 4px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
         .flash-message {
             margin-top: 10px;
             margin-bottom: 10px;
@@ -89,11 +121,24 @@
             opacity: 0;
             transform: translateY(20px);
             transition: opacity 0.3s, transform 0.3s;
+            font-weight: 500;
+            font-size: 1.1rem;
         }
 
         .token-update-notification.show {
             opacity: 1;
             transform: translateY(0);
+        }
+
+        /* Action confirmation animation */
+        .action-success {
+            animation: pulse-success 1s;
+        }
+
+        @keyframes pulse-success {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
         }
         footer {
             margin-top: 40px;
@@ -259,6 +304,19 @@
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 5000);
+        }
+
+        // Function to show visual feedback for successful actions
+        function showActionSuccess(element) {
+            if (!element) return;
+
+            // Add success animation class
+            element.classList.add('action-success');
+
+            // Remove class after animation completes
+            setTimeout(() => {
+                element.classList.remove('action-success');
+            }, 1000);
         }
 
         // Function to play notification sound

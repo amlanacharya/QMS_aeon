@@ -1,4 +1,4 @@
-<!-- templates/admin_print_token.html -->
+<!-- templates/admin_print_token_legacy.html -->
 {% extends 'base.html' %}
 
 {% block content %}
@@ -13,12 +13,12 @@
                 <div class="no-print">
                     <h2>Token Number</h2>
                     <div class="display-1 fw-bold text-primary my-3">{{ token.token_number }}</div>
-
+                    
                     <p><strong>Customer:</strong> {{ token.customer_name }}</p>
                     <p><strong>Visit Reason:</strong> {{ token.visit_reason }}</p>
                     <p><strong>Phone No:</strong> {{ token.phone_number }}</p>
                     <p><strong>Status:</strong> {{ token.status }}</p>
-
+                    
                     <div class="d-grid gap-2">
                         <button onclick="window.print();" class="btn btn-primary btn-lg">
                             <i class="bi bi-printer"></i> Print Token
@@ -36,17 +36,17 @@
     <div class="token-print">
         <h3>Token Receipt</h3>
         <div class="token-number-print">{{ token.token_number }}</div>
-
+        
         <div class="token-details-print">
             <p><strong>Customer:</strong> {{ token.customer_name }}</p>
             <p><strong>Visit Reason:</strong> {{ token.visit_reason }}</p>
             <p><strong>Phone No:</strong> {{ token.phone_number }}</p>
         </div>
-
+        
         <div class="token-date-print">
             <p>Generated on: {{ token.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
         </div>
-
+        
         <div class="token-footer-print">
             <p>Please wait for your token number to be called.</p>
             <p>Thank you for your patience!</p>

@@ -461,11 +461,12 @@ def reset_database():
                     for token in tokens:
                         data.append({
                             'Token Number': token.token_number,
-                            'Application Number': token.application_number,
+                            'Visit Reason': token.visit_reason,
                             'Phone Number': token.phone_number,
                             'Customer Name': token.customer_name,
                             'Status': token.status,
-                            'Created At': token.created_at
+                            'Created At': token.created_at,
+                            'Recall Count': token.recall_count
                         })
 
                     # Create a backup filename with timestamp
@@ -520,9 +521,12 @@ def revert_token_status(token_id):
     # If this was the current token, clear it
     settings = get_settings()
     if settings.current_token_id == token_id:
-        settings.current_token_id = None
+        settings.current_token_id = 0  # Set to 0 instead of None for consistency
 
     db.session.commit()
+
+    # Broadcast token update to all connected clients
+    broadcast_token_update()
 
     flash(f'Token {token.token_number} status reverted from {previous_status} to PENDING', 'success')
     return redirect(url_for('admin'))

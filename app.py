@@ -131,7 +131,20 @@ class Token(db.Model):
         """Calculate waiting time in minutes from creation to being served"""
         if not self.served_at:
             return None
-        delta = self.served_at - self.created_at
+
+        # Handle timezone-aware and naive datetime comparison
+        if self.created_at.tzinfo is None and self.served_at.tzinfo is not None:
+            # created_at is naive, served_at is aware
+            served_at_naive = self.served_at.replace(tzinfo=None)
+            delta = served_at_naive - self.created_at
+        elif self.created_at.tzinfo is not None and self.served_at.tzinfo is None:
+            # created_at is aware, served_at is naive
+            created_at_naive = self.created_at.replace(tzinfo=None)
+            delta = self.served_at - created_at_naive
+        else:
+            # Both are either naive or aware
+            delta = self.served_at - self.created_at
+
         return int(delta.total_seconds() / 60)
 
     @property
@@ -139,7 +152,20 @@ class Token(db.Model):
         """Calculate total time from creation to completion in minutes"""
         if not self.completed_at:
             return None
-        delta = self.completed_at - self.created_at
+
+        # Handle timezone-aware and naive datetime comparison
+        if self.created_at.tzinfo is None and self.completed_at.tzinfo is not None:
+            # created_at is naive, completed_at is aware
+            completed_at_naive = self.completed_at.replace(tzinfo=None)
+            delta = completed_at_naive - self.created_at
+        elif self.created_at.tzinfo is not None and self.completed_at.tzinfo is None:
+            # created_at is aware, completed_at is naive
+            created_at_naive = self.created_at.replace(tzinfo=None)
+            delta = self.completed_at - created_at_naive
+        else:
+            # Both are either naive or aware
+            delta = self.completed_at - self.created_at
+
         return int(delta.total_seconds() / 60)
 
     @property
@@ -169,16 +195,18 @@ class Reason(db.Model):
     created_at = db.Column(db.DateTime, default=get_ist_time)
     updated_at = db.Column(db.DateTime, default=get_ist_time, onupdate=get_ist_time)
 
-# Staff model for tracking who serves which token
-class Staff(db.Model):
-    __tablename__ = 'staff'
+# Employee model for tracking who serves which token
+class Employee(db.Model):
+    __tablename__ = 'employee'
     id = db.Column(db.Integer, primary_key=True)
-    staff_id = db.Column(db.String(20), nullable=False, unique=True)  # Staff ID or username
+    employee_id = db.Column(db.String(20), nullable=False, unique=True)  # Employee ID or username
     name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(50))  # e.g., 'admin', 'operator', etc.
+    password = db.Column(db.String(100), nullable=False)  # Store hashed password in production
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=get_ist_time)
     last_login = db.Column(db.DateTime, nullable=True)
+    is_on_duty = db.Column(db.Boolean, default=False)  # Whether employee is currently on duty
 
     # Statistics
     tokens_served = db.Column(db.Integer, default=0)
@@ -243,7 +271,16 @@ def generate_token_number():
 
 # Authentication middleware
 def is_admin():
-    return session.get('is_admin', False)
+    # Check if user is explicitly marked as admin
+    if session.get('is_admin', False):
+        return True
+
+    # Check if user is an employee with admin role
+    if 'employee_id' in session and 'employee_role' in session:
+        if session['employee_role'] == 'admin':
+            return True
+
+    return False
 
 # Routes
 @app.route('/')
@@ -297,8 +334,8 @@ def token_confirmation(token_id):
 
 @app.route('/next-token')
 def next_token():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     next_token = get_next_token()
@@ -310,7 +347,15 @@ def next_token():
             current_token.served_at = get_ist_time()
             # Calculate service duration in seconds
             if current_token.created_at:
-                delta = current_token.served_at - current_token.created_at
+                # Make sure both datetimes are comparable (either both naive or both aware)
+                # If created_at is naive (no timezone info), make served_at naive too
+                if current_token.created_at.tzinfo is None:
+                    served_at_naive = current_token.served_at.replace(tzinfo=None)
+                    delta = served_at_naive - current_token.created_at
+                else:
+                    # Both have timezone info
+                    delta = current_token.served_at - current_token.created_at
+
                 current_token.service_duration = int(delta.total_seconds())
             db.session.commit()
 
@@ -322,12 +367,16 @@ def next_token():
     else:
         flash('No more pending tokens in queue', 'info')
 
-    return redirect(url_for('admin'))
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
 
 @app.route('/recall-token')
 def recall_token():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     current_token = get_current_token()
@@ -350,12 +399,16 @@ def recall_token():
     else:
         flash('No active token to recall', 'error')
 
-    return redirect(url_for('admin'))
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
 
 @app.route('/skip-token')
 def skip_token():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     current_token = get_current_token()
@@ -387,7 +440,11 @@ def skip_token():
     else:
         flash('No active token to skip', 'error')
 
-    return redirect(url_for('admin'))
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
 
 # Admin routes
 @app.route('/admin')
@@ -423,8 +480,8 @@ def admin_logout():
 
 @app.route('/toggle-queue')
 def toggle_queue():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     settings = get_settings()
@@ -436,12 +493,16 @@ def toggle_queue():
 
     state = 'activated' if settings.queue_active else 'paused'
     flash(f'Queue {state} successfully', 'success')
-    return redirect(url_for('admin'))
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
 
 @app.route('/reset-counter')
 def reset_counter():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     settings = get_settings()
@@ -449,12 +510,16 @@ def reset_counter():
     db.session.commit()
 
     flash('Token counter reset to 0', 'success')
-    return redirect(url_for('admin'))
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
 
 @app.route('/export-data')
 def export_data():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     # Get all tokens
@@ -512,14 +577,18 @@ def export_data():
 
 @app.route('/admin-generate-token', methods=['POST'])
 def admin_generate_token():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     settings = get_settings()
     if not settings.queue_active:
         flash('Queue is currently paused. Cannot generate new tokens.', 'error')
-        return redirect(url_for('admin'))
+        # Redirect based on user type
+        if is_admin():
+            return redirect(url_for('admin'))
+        else:
+            return redirect(url_for('employee_dashboard'))
 
     visit_reason = request.form.get('visit_reason')
     other_reason = request.form.get('other_reason')
@@ -548,14 +617,18 @@ def admin_generate_token():
 
 @app.route('/admin-print-token/<int:token_id>')
 def admin_print_token(token_id):
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     token = Token.query.get(token_id)
     if not token:
         flash('Token not found', 'error')
-        return redirect(url_for('admin'))
+        # Redirect based on user type
+        if is_admin():
+            return redirect(url_for('admin'))
+        else:
+            return redirect(url_for('employee_dashboard'))
 
     # By default, use the thermal template
     return render_template('thermal_print_token.html', token=token)
@@ -654,9 +727,9 @@ def reset_database():
 
 @app.route('/revert-token-status/<int:token_id>')
 def revert_token_status(token_id):
-    if not is_admin():
-        flash('Admin access required', 'error')
-        return redirect(url_for('admin'))
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
 
     token = Token.query.get_or_404(token_id)
 
@@ -699,13 +772,17 @@ def revert_token_status(token_id):
     broadcast_token_update()
 
     flash(f'Token {token.token_number} status reverted from {previous_status} to PENDING', 'success')
-    return redirect(url_for('admin'))
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
 
 @app.route('/edit-token/<int:token_id>', methods=['GET', 'POST'])
 def edit_token(token_id):
-    if not is_admin():
-        flash('Admin access required', 'error')
-        return redirect(url_for('admin'))
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
 
     token = Token.query.get_or_404(token_id)
 
@@ -724,14 +801,18 @@ def edit_token(token_id):
 
         db.session.commit()
         flash(f'Token {token.token_number} details updated successfully', 'success')
-        return redirect(url_for('admin'))
+        # Redirect based on user type
+        if is_admin():
+            return redirect(url_for('admin'))
+        else:
+            return redirect(url_for('employee_dashboard'))
 
     return render_template('edit_token.html', token=token)
 
 @app.route('/delete-token/<int:token_id>')
 def delete_token(token_id):
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     token = Token.query.get_or_404(token_id)
@@ -768,54 +849,19 @@ def delete_token(token_id):
     broadcast_token_update()
 
     flash(f'Token {token_number} has been deleted', 'success')
-    return redirect(url_for('admin'))
-
-@app.route('/serve-token/<int:token_id>')
-def serve_token(token_id):
-    if not is_admin():
-        flash('Admin access required', 'error')
-        return redirect(url_for('index'))
-
-    token = Token.query.get_or_404(token_id)
-
-    # Only pending tokens can be served
-    if token.status != 'PENDING':
-        flash(f'Only pending tokens can be served. Token {token.token_number} is {token.status}', 'error')
+    # Redirect based on user type
+    if is_admin():
         return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
 
-    # No need to check if token is out of order anymore
-    # Our improved get_next_token() function handles all cases
-
-    # If there's a current token, mark it as served
-    settings = get_settings()
-    current_token = get_current_token()
-    if current_token:
-        current_token.status = 'SERVED'
-        current_token.served_at = get_ist_time()
-        # Calculate service duration in seconds
-        if current_token.created_at:
-            delta = current_token.served_at - current_token.created_at
-            current_token.service_duration = int(delta.total_seconds())
-        db.session.commit()
-
-    # Set the selected token as current
-    settings.current_token_id = token.id
-    db.session.commit()
-
-    # We don't need to do anything special here anymore since we've updated
-    # the get_next_token() function to handle all cases correctly
-
-    # Broadcast token update to all connected clients
-    broadcast_token_update()
-
-    flash(f'Now serving token {token.token_number}', 'success')
-    return redirect(url_for('admin'))
+# Original serve_token function has been replaced by the enhanced version below
 
 # Reason Management Routes
 @app.route('/manage-reasons')
 def manage_reasons():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     reasons = Reason.query.order_by(Reason.code).all()
@@ -823,8 +869,8 @@ def manage_reasons():
 
 @app.route('/add-reason', methods=['GET', 'POST'])
 def add_reason():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     if request.method == 'POST':
@@ -849,8 +895,8 @@ def add_reason():
 
 @app.route('/edit-reason/<int:reason_id>', methods=['GET', 'POST'])
 def edit_reason(reason_id):
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     reason = Reason.query.get_or_404(reason_id)
@@ -879,8 +925,8 @@ def edit_reason(reason_id):
 
 @app.route('/delete-reason/<int:reason_id>')
 def delete_reason(reason_id):
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     reason = Reason.query.get_or_404(reason_id)
@@ -905,8 +951,8 @@ def service_analytics():
 # Enhanced Analytics Route with AI-Ready Data
 @app.route('/enhanced-analytics')
 def enhanced_analytics():
-    if not is_admin():
-        flash('Admin access required', 'error')
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
         return redirect(url_for('index'))
 
     # Get all tokens
@@ -914,6 +960,9 @@ def enhanced_analytics():
     served_tokens = [t for t in all_tokens if t.status == 'SERVED' and t.served_at is not None]
     skipped_tokens = [t for t in all_tokens if t.status == 'SKIPPED' or t.skip_count > 0]
     pending_tokens = [t for t in all_tokens if t.status == 'PENDING']
+
+    # Get all employees
+    staff_members = Employee.query.all()
 
     # Basic counts
     total_tokens = len(all_tokens)
@@ -923,8 +972,12 @@ def enhanced_analytics():
 
     # Calculate service metrics
     if total_served > 0:
+        # Use the waiting_time property which now handles timezone differences
         avg_waiting_time = sum(token.waiting_time or 0 for token in served_tokens) / total_served
+
+        # For service_duration, we've already calculated and stored it as an integer
         avg_service_duration = sum(token.service_duration or 0 for token in served_tokens) / total_served / 60
+
         total_recalls = sum(token.recall_count or 0 for token in all_tokens)
         total_skips = sum(token.skip_count or 0 for token in all_tokens)
     else:
@@ -1010,7 +1063,294 @@ def enhanced_analytics():
                           day_stats=day_stats,
                           hour_stats=hour_stats,
                           reason_stats=reason_stats,
-                          all_tokens=all_tokens)
+                          all_tokens=all_tokens,
+                          staff_members=staff_members)
+
+# Employee Management Routes
+@app.route('/manage-employees')
+def manage_employees():
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    employees = Employee.query.all()
+    active_employee_count = Employee.query.filter_by(is_active=True).count()
+
+    return render_template('manage_employees.html',
+                          employees=employees,
+                          active_employee_count=active_employee_count)
+
+@app.route('/add-employee', methods=['POST'])
+def add_employee():
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    employee_id = request.form.get('employee_id')
+    name = request.form.get('name')
+    role = request.form.get('role')
+    password = request.form.get('password')
+    is_active = 'is_active' in request.form
+
+    # Check if employee_id already exists
+    existing_employee = Employee.query.filter_by(employee_id=employee_id).first()
+    if existing_employee:
+        flash(f'Employee ID {employee_id} already exists', 'error')
+        return redirect(url_for('manage_employees'))
+
+    # Create new employee
+    new_employee = Employee(
+        employee_id=employee_id,
+        name=name,
+        role=role,
+        password=password,  # In production, hash this password
+        is_active=is_active
+    )
+
+    db.session.add(new_employee)
+    db.session.commit()
+
+    flash(f'Employee {name} added successfully', 'success')
+    return redirect(url_for('manage_employees'))
+
+@app.route('/edit-employee/<int:employee_id>')
+def edit_employee(employee_id):
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    employee = Employee.query.get_or_404(employee_id)
+    return render_template('edit_employee.html', employee=employee)
+
+@app.route('/update-employee/<int:employee_id>', methods=['POST'])
+def update_employee(employee_id):
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    employee = Employee.query.get_or_404(employee_id)
+
+    # Check if employee_id is being changed and if it already exists
+    new_employee_id = request.form.get('employee_id')
+    if new_employee_id != employee.employee_id:
+        existing_employee = Employee.query.filter_by(employee_id=new_employee_id).first()
+        if existing_employee:
+            flash(f'Employee ID {new_employee_id} already exists', 'error')
+            return redirect(url_for('edit_employee', employee_id=employee_id))
+
+    # Update employee details
+    employee.employee_id = new_employee_id
+    employee.name = request.form.get('name')
+    employee.role = request.form.get('role')
+    employee.is_active = 'is_active' in request.form
+
+    # Only update password if provided
+    password = request.form.get('password')
+    if password and password.strip():
+        employee.password = password  # In production, hash this password
+
+    db.session.commit()
+
+    flash(f'Employee {employee.name} updated successfully', 'success')
+    return redirect(url_for('manage_employees'))
+
+@app.route('/toggle-employee-status/<int:employee_id>')
+def toggle_employee_status(employee_id):
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    employee = Employee.query.get_or_404(employee_id)
+    employee.is_active = not employee.is_active
+    db.session.commit()
+
+    status = 'activated' if employee.is_active else 'deactivated'
+    flash(f'Employee {employee.name} {status} successfully', 'success')
+    return redirect(url_for('manage_employees'))
+
+# Employee Login Routes
+@app.route('/employee-login')
+def employee_login():
+    return render_template('employee_login.html')
+
+@app.route('/employee-login-process', methods=['POST'])
+def employee_login_process():
+    employee_id = request.form.get('employee_id')
+    password = request.form.get('password')
+
+    employee = Employee.query.filter_by(employee_id=employee_id).first()
+
+    if employee and employee.password == password and employee.is_active:  # In production, verify hashed password
+        session['employee_id'] = employee.id
+        session['employee_name'] = employee.name
+        session['employee_role'] = employee.role
+
+        # Update last login time
+        employee.last_login = get_ist_time()
+        db.session.commit()
+
+        flash(f'Welcome, {employee.name}!', 'success')
+
+        # If employee is admin, redirect to admin page
+        if employee.role == 'admin':
+            session['is_admin'] = True
+            return redirect(url_for('admin'))
+        else:
+            return redirect(url_for('employee_dashboard'))
+    else:
+        flash('Invalid credentials or account is inactive', 'error')
+        return redirect(url_for('employee_login'))
+
+@app.route('/employee-logout')
+def employee_logout():
+    # Clear employee session
+    session.pop('employee_id', None)
+    session.pop('employee_name', None)
+    session.pop('employee_role', None)
+    session.pop('is_admin', None)
+
+    flash('Logged out successfully', 'info')
+    return redirect(url_for('index'))
+
+@app.route('/employee-dashboard')
+def employee_dashboard():
+    if 'employee_id' not in session:
+        flash('Please log in first', 'error')
+        return redirect(url_for('employee_login'))
+
+    employee_id = session['employee_id']
+    employee = Employee.query.get(employee_id)
+
+    if not employee:
+        session.clear()
+        flash('Employee account not found', 'error')
+        return redirect(url_for('employee_login'))
+
+    settings = get_settings()
+    current_token = get_current_token()
+    next_token = get_next_token()
+    pending_tokens = Token.query.filter_by(status='PENDING').order_by(Token.id).all()
+
+    # Get tokens served by this employee
+    served_tokens = Token.query.filter_by(staff_id=str(employee.id), status='SERVED').order_by(Token.served_at.desc()).limit(10).all()
+
+    return render_template('employee_dashboard.html',
+                          employee=employee,
+                          settings=settings,
+                          current_token=current_token,
+                          next_token=next_token,
+                          pending_tokens=pending_tokens,
+                          served_tokens=served_tokens)
+
+@app.route('/start-duty')
+def start_duty():
+    if 'employee_id' not in session:
+        flash('Please log in first', 'error')
+        return redirect(url_for('employee_login'))
+
+    employee_id = session['employee_id']
+    employee = Employee.query.get(employee_id)
+
+    # Set all other employees to not on duty
+    Employee.query.filter(Employee.id != employee_id).update({Employee.is_on_duty: False})
+
+    # Set this employee as on duty
+    employee.is_on_duty = True
+    db.session.commit()
+
+    flash(f'{employee.name} is now on duty', 'success')
+    return redirect(url_for('employee_dashboard'))
+
+@app.route('/end-duty')
+def end_duty():
+    if 'employee_id' not in session:
+        flash('Please log in first', 'error')
+        return redirect(url_for('employee_login'))
+
+    employee_id = session['employee_id']
+    employee = Employee.query.get(employee_id)
+
+    employee.is_on_duty = False
+    db.session.commit()
+
+    flash(f'{employee.name} is now off duty', 'info')
+    return redirect(url_for('employee_dashboard'))
+
+# Update serve_token route to track employee
+@app.route('/serve-token/<int:token_id>')
+def serve_token(token_id):
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    token = Token.query.get_or_404(token_id)
+
+    # Only pending tokens can be served
+    if token.status != 'PENDING':
+        flash(f'Only pending tokens can be served. Token {token.token_number} is {token.status}', 'error')
+        if is_admin():
+            return redirect(url_for('admin'))
+        else:
+            return redirect(url_for('employee_dashboard'))
+
+    # No need to check if token is out of order anymore
+    # Our improved get_next_token() function handles all cases
+
+    # If there's a current token, mark it as served
+    settings = get_settings()
+    current_token = get_current_token()
+    if current_token:
+        current_token.status = 'SERVED'
+        current_token.served_at = get_ist_time()
+
+        # Record which employee served this token
+        if 'employee_id' in session:
+            employee_id = session['employee_id']
+            current_token.staff_id = str(employee_id)  # Keep field name for backward compatibility
+
+            # Update employee statistics
+            employee = Employee.query.get(employee_id)
+            if employee:
+                employee.tokens_served += 1
+
+                # Update average service time
+                if current_token.service_duration:
+                    if employee.tokens_served == 1:
+                        employee.avg_service_time = current_token.service_duration / 60  # Convert to minutes
+                    else:
+                        # Weighted average to smooth out the values
+                        employee.avg_service_time = (employee.avg_service_time * (employee.tokens_served - 1) +
+                                                 current_token.service_duration / 60) / employee.tokens_served
+
+        # Calculate service duration in seconds
+        if current_token.created_at:
+            # Make sure both datetimes are comparable (either both naive or both aware)
+            # If created_at is naive (no timezone info), make served_at naive too
+            if current_token.created_at.tzinfo is None:
+                served_at_naive = current_token.served_at.replace(tzinfo=None)
+                delta = served_at_naive - current_token.created_at
+            else:
+                # Both have timezone info
+                delta = current_token.served_at - current_token.created_at
+
+            current_token.service_duration = int(delta.total_seconds())
+
+        db.session.commit()
+
+    # Set the selected token as current
+    settings.current_token_id = token.id
+    db.session.commit()
+
+    # Broadcast token update to all connected clients
+    broadcast_token_update()
+
+    flash(f'Now serving token {token.token_number}', 'success')
+
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

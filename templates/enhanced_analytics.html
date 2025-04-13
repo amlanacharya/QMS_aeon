@@ -234,6 +234,61 @@
         </div>
     </div>
 
+    <!-- Staff Performance Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-dark">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Staff Performance</h5>
+                </div>
+                <div class="card-body">
+                    {% if staff_members %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Staff ID</th>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>Tokens Served</th>
+                                    <th>Avg. Service Time (min)</th>
+                                    <th>Status</th>
+                                    <th>Last Login</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for staff in staff_members %}
+                                <tr>
+                                    <td>{{ staff.staff_id }}</td>
+                                    <td>{{ staff.name }}</td>
+                                    <td>{{ staff.role|title }}</td>
+                                    <td>{{ staff.tokens_served }}</td>
+                                    <td>{{ staff.avg_service_time|round(1) }}</td>
+                                    <td>
+                                        {% if staff.is_on_duty %}
+                                        <span class="badge bg-success">On Duty</span>
+                                        {% elif staff.is_active %}
+                                        <span class="badge bg-secondary">Available</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ staff.last_login.strftime('%Y-%m-%d %H:%M') if staff.last_login else 'Never' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        No staff members found. <a href="{{ url_for('manage_staff') }}">Add staff members</a> to track performance.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Data Export Section -->
     <div class="row mb-4">
         <div class="col-12">

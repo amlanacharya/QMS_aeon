@@ -2,7 +2,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import os
 import pandas as pd
 import io
@@ -11,6 +11,13 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tokens.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Define IST timezone (UTC+5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
+
+# Function to get current time in IST
+def get_ist_time():
+    return datetime.now(timezone.utc).astimezone(IST)
 
 # Initialize Socket.IO
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -82,7 +89,7 @@ def broadcast_token_update():
 @app.context_processor
 def inject_now():
     def now():
-        return datetime.utcnow().strftime('%Y')
+        return get_ist_time().strftime('%Y')
     return {'now': now}
 
 @app.context_processor
@@ -103,7 +110,7 @@ class Token(db.Model):
     phone_number = db.Column(db.String(20))
     customer_name = db.Column(db.String(100))
     status = db.Column(db.String(20), default='PENDING')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_ist_time)
     # New fields for recall tracking
     recall_count = db.Column(db.Integer, default=0)
     last_recalled_at = db.Column(db.DateTime, nullable=True)
@@ -159,8 +166,8 @@ class Reason(db.Model):
     code = db.Column(db.String(20), nullable=False, unique=True)  # e.g., 'reason1'
     description = db.Column(db.String(100), nullable=False)  # e.g., 'Reason 1'
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_ist_time)
+    updated_at = db.Column(db.DateTime, default=get_ist_time, onupdate=get_ist_time)
 
 # Staff model for tracking who serves which token
 class Staff(db.Model):
@@ -170,7 +177,7 @@ class Staff(db.Model):
     name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(50))  # e.g., 'admin', 'operator', etc.
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_ist_time)
     last_login = db.Column(db.DateTime, nullable=True)
 
     # Statistics
@@ -300,7 +307,7 @@ def next_token():
         current_token = get_current_token()
         if current_token:
             current_token.status = 'SERVED'
-            current_token.served_at = datetime.utcnow()
+            current_token.served_at = get_ist_time()
             # Calculate service duration in seconds
             if current_token.created_at:
                 delta = current_token.served_at - current_token.created_at
@@ -331,7 +338,7 @@ def recall_token():
         current_token.recall_count += 1
 
         # Add last recall time
-        current_token.last_recalled_at = datetime.utcnow()
+        current_token.last_recalled_at = get_ist_time()
 
         db.session.commit()
 
@@ -358,7 +365,7 @@ def skip_token():
 
         # Increment skip count and record skip time
         current_token.skip_count += 1
-        current_token.last_skipped_at = datetime.utcnow()
+        current_token.last_skipped_at = get_ist_time()
 
         # Find the next token to serve
         next_token = get_next_token()
@@ -611,7 +618,7 @@ def reset_database():
                         data.append(token_data)
 
                     # Create a backup filename with timestamp
-                    backup_time = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+                    backup_time = get_ist_time().strftime('%Y%m%d_%H%M%S')
                     if not os.path.exists('backups'):
                         os.makedirs('backups')
 
@@ -784,7 +791,7 @@ def serve_token(token_id):
     current_token = get_current_token()
     if current_token:
         current_token.status = 'SERVED'
-        current_token.served_at = datetime.utcnow()
+        current_token.served_at = get_ist_time()
         # Calculate service duration in seconds
         if current_token.created_at:
             delta = current_token.served_at - current_token.created_at
@@ -862,7 +869,7 @@ def edit_reason(reason_id):
         reason.code = code
         reason.description = description
         reason.is_active = is_active
-        reason.updated_at = datetime.utcnow()
+        reason.updated_at = get_ist_time()
         db.session.commit()
 
         flash(f'Reason "{description}" updated successfully', 'success')
@@ -890,57 +897,10 @@ def delete_reason(reason_id):
     flash(f'Reason "{reason.description}" deleted successfully', 'success')
     return redirect(url_for('manage_reasons'))
 
-# Service Time Analytics Route
+# Redirect old analytics route to enhanced analytics
 @app.route('/service-analytics')
 def service_analytics():
-    if not is_admin():
-        flash('Admin access required', 'error')
-        return redirect(url_for('index'))
-
-    # Get all tokens that have been served
-    served_tokens = Token.query.filter(Token.status == 'SERVED', Token.served_at.isnot(None)).all()
-
-    # Calculate analytics
-    total_served = len(served_tokens)
-
-    if total_served > 0:
-        # Calculate average waiting time
-        avg_waiting_time = sum(token.waiting_time or 0 for token in served_tokens) / total_served
-
-        # Calculate average service duration
-        avg_service_duration = sum(token.service_duration or 0 for token in served_tokens) / total_served / 60  # Convert to minutes
-
-        # Group by visit reason
-        reason_stats = {}
-        for token in served_tokens:
-            reason = token.visit_reason
-            if reason not in reason_stats:
-                reason_stats[reason] = {
-                    'count': 0,
-                    'total_waiting_time': 0,
-                    'total_service_duration': 0
-                }
-
-            reason_stats[reason]['count'] += 1
-            reason_stats[reason]['total_waiting_time'] += token.waiting_time or 0
-            reason_stats[reason]['total_service_duration'] += token.service_duration or 0
-
-        # Calculate averages for each reason
-        for reason in reason_stats:
-            count = reason_stats[reason]['count']
-            reason_stats[reason]['avg_waiting_time'] = reason_stats[reason]['total_waiting_time'] / count
-            reason_stats[reason]['avg_service_duration'] = reason_stats[reason]['total_service_duration'] / count / 60  # Convert to minutes
-    else:
-        avg_waiting_time = 0
-        avg_service_duration = 0
-        reason_stats = {}
-
-    return render_template('service_analytics.html',
-                          total_served=total_served,
-                          avg_waiting_time=avg_waiting_time,
-                          avg_service_duration=avg_service_duration,
-                          reason_stats=reason_stats,
-                          served_tokens=served_tokens)
+    return redirect(url_for('enhanced_analytics'))
 
 # Enhanced Analytics Route with AI-Ready Data
 @app.route('/enhanced-analytics')

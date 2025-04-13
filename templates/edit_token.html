@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Edit Token {{ token.token_number }}</h4>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('edit_token', token_id=token.id) }}" method="post">
+                    <div class="mb-3">
+                        <label for="visit_reason" class="form-label">Visit Reason</label>
+                        <select class="form-control" id="visit_reason" name="visit_reason" required onchange="toggleCustomReason()">
+                            <option value="">Select Visit Reason</option>
+                            <option value="reason1" {% if token.visit_reason == 'reason1' %}selected{% endif %}>Reason 1</option>
+                            <option value="reason2" {% if token.visit_reason == 'reason2' %}selected{% endif %}>Reason 2</option>
+                            <option value="reason3" {% if token.visit_reason == 'reason3' %}selected{% endif %}>Reason 3</option>
+                            <option value="reason4" {% if token.visit_reason == 'reason4' %}selected{% endif %}>Reason 4</option>
+                            <option value="reason5" {% if token.visit_reason == 'reason5' %}selected{% endif %}>Reason 5</option>
+                            <option value="reason6" {% if token.visit_reason == 'reason6' %}selected{% endif %}>Reason 6</option>
+                            <option value="other" {% if token.visit_reason.startswith('Other:') %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="custom_reason_div" style="display: {% if token.visit_reason.startswith('Other:') %}block{% else %}none{% endif %};">
+                        <label for="custom_reason" class="form-label">Specify Reason</label>
+                        <input type="text" class="form-control" name="custom_reason" id="custom_reason" 
+                               value="{{ token.visit_reason[7:] if token.visit_reason.startswith('Other:') else '' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="phone_number" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                               value="{{ token.phone_number }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="customer_name" class="form-label">Customer Name</label>
+                        <input type="text" class="form-control" id="customer_name" name="customer_name" 
+                               value="{{ token.customer_name }}" required>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Update Token</button>
+                        <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

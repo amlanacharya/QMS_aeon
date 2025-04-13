@@ -93,5 +93,21 @@
             this.parentNode.appendChild(heading);
         });
     </script>
+    <script>
+        function toggleCustomReason() {
+            const reasonSelect = document.getElementById('visit_reason');
+            const customReasonDiv = document.getElementById('custom_reason_div');
+            const customReasonInput = document.getElementById('custom_reason');
+            
+            if (reasonSelect.value === 'other') {
+                customReasonDiv.style.display = 'block';
+                customReasonInput.required = true;
+            } else {
+                customReasonDiv.style.display = 'none';
+                customReasonInput.required = false;
+                customReasonInput.value = '';
+            }
+        }
+    </script>
 </body>
 </html>

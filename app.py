@@ -25,7 +25,8 @@ class Token(db.Model):
     __tablename__ = 'tokens'
     id = db.Column(db.Integer, primary_key=True)
     token_number = db.Column(db.String(10), nullable=False)
-    application_number = db.Column(db.String(50))
+    visit_reason = db.Column(db.String(50), nullable=False)  # Changed from application_number
+    custom_reason = db.Column(db.String(100))  # New field for custom reason
     phone_number = db.Column(db.String(20))
     customer_name = db.Column(db.String(100))
     status = db.Column(db.String(20), default='PENDING')
@@ -93,15 +94,19 @@ def generate_token():
         flash('Queue is currently paused. Cannot generate new tokens.', 'error')
         return redirect(url_for('index'))
     
-    application_number = request.form.get('application_number')
+    visit_reason = request.form.get('visit_reason')
+    custom_reason = request.form.get('custom_reason')
     phone_number = request.form.get('phone_number')
     customer_name = request.form.get('customer_name')
+    
+    # Combine reason if it's "other"
+    final_reason = f"Other: {custom_reason}" if visit_reason == 'other' else visit_reason
     
     token_number = generate_token_number()
     
     new_token = Token(
         token_number=token_number,
-        application_number=application_number,
+        visit_reason=final_reason,
         phone_number=phone_number,
         customer_name=customer_name
     )
@@ -229,15 +234,15 @@ def export_data():
         flash('Admin access required', 'error')
         return redirect(url_for('index'))
     
-    # In a real app, implement filtering by date, status, etc.
+    # Get all tokens
     tokens = Token.query.all()
     
-    # Convert to DataFrame
+    # Convert to DataFrame with correct fields
     data = []
     for token in tokens:
         data.append({
             'Token Number': token.token_number,
-            'Application Number': token.application_number,
+            'Visit Reason': token.visit_reason,
             'Phone Number': token.phone_number,
             'Customer Name': token.customer_name,
             'Status': token.status,
@@ -281,15 +286,19 @@ def admin_generate_token():
         flash('Queue is currently paused. Cannot generate new tokens.', 'error')
         return redirect(url_for('admin'))
     
-    application_number = request.form.get('application_number')
+    visit_reason = request.form.get('visit_reason')
+    other_reason = request.form.get('other_reason')
     phone_number = request.form.get('phone_number')
     customer_name = request.form.get('customer_name')
+    
+    # Combine reason if "Others" is selected
+    final_reason = f"{visit_reason}: {other_reason}" if visit_reason == "Others" else visit_reason
     
     token_number = generate_token_number()
     
     new_token = Token(
         token_number=token_number,
-        application_number=application_number,
+        visit_reason=final_reason,
         phone_number=phone_number,
         customer_name=customer_name
     )
@@ -395,6 +404,79 @@ def reset_database():
     
     # GET request - show the confirmation form
     return render_template('reset_database.html')
+
+@app.route('/revert-token-status/<int:token_id>')
+def revert_token_status(token_id):
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+    
+    token = Token.query.get_or_404(token_id)
+    
+    # Store previous status for message
+    previous_status = token.status
+    
+    # Revert to PENDING
+    token.status = 'PENDING'
+    
+    # If this was the current token, clear it
+    settings = get_settings()
+    if settings.current_token_id == token_id:
+        settings.current_token_id = None
+    
+    db.session.commit()
+    
+    flash(f'Token {token.token_number} status reverted from {previous_status} to PENDING', 'success')
+    return redirect(url_for('admin'))
+
+@app.route('/edit-token/<int:token_id>', methods=['GET', 'POST'])
+def edit_token(token_id):
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+    
+    token = Token.query.get_or_404(token_id)
+    
+    if request.method == 'POST':
+        token.customer_name = request.form.get('customer_name')
+        token.phone_number = request.form.get('phone_number')
+        
+        visit_reason = request.form.get('visit_reason')
+        custom_reason = request.form.get('custom_reason')
+        
+        # Handle visit reason
+        if visit_reason == 'other':
+            token.visit_reason = f"Other: {custom_reason}"
+        else:
+            token.visit_reason = visit_reason
+            
+        db.session.commit()
+        flash(f'Token {token.token_number} details updated successfully', 'success')
+        return redirect(url_for('admin'))
+    
+    return render_template('edit_token.html', token=token)
+
+@app.route('/delete-token/<int:token_id>')
+def delete_token(token_id):
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+    
+    token = Token.query.get_or_404(token_id)
+    
+    # Only allow deletion of pending tokens
+    if token.status != 'PENDING':
+        flash('Only pending tokens can be deleted', 'error')
+        return redirect(url_for('admin'))
+    
+    # Store token number for message
+    token_number = token.token_number
+    
+    db.session.delete(token)
+    db.session.commit()
+    
+    flash(f'Token {token_number} has been deleted', 'success')
+    return redirect(url_for('admin'))
 
 if __name__ == '__main__':
     app.run(debug=True)

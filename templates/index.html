@@ -27,7 +27,19 @@
                 <h3 class="text-center mb-4">Get Your Token</h3>
                 <form action="{{ url_for('generate_token') }}" method="post">
                     <div class="mb-3">
-                        <input type="text" class="form-control" name="application_number" placeholder="Application No." required>
+                        <select class="form-control" id="visit_reason" name="visit_reason" required onchange="toggleCustomReason()">
+                            <option value="">Select Visit Reason</option>
+                            <option value="reason1">Reason 1</option>
+                            <option value="reason2">Reason 2</option>
+                            <option value="reason3">Reason 3</option>
+                            <option value="reason4">Reason 4</option>
+                            <option value="reason5">Reason 5</option>
+                            <option value="reason6">Reason 6</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="custom_reason_div" style="display: none;">
+                        <input type="text" class="form-control" name="custom_reason" id="custom_reason" placeholder="Specify your reason">
                     </div>
                     <div class="mb-3">
                         <input type="tel" class="form-control" name="phone_number" placeholder="Phone No." required>

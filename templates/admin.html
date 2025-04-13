@@ -122,6 +122,9 @@
                 <div class="system-management">
                     <h5 class="card-title">System Management</h5>
                     <div class="d-grid gap-2">
+                        <a href="{{ url_for('manage_reasons') }}" class="btn btn-outline-success">
+                            <i class="bi bi-list-check me-2"></i>Manage Visit Reasons
+                        </a>
                         <a href="{{ url_for('export_data', format='csv') }}" class="btn btn-outline-primary">
                             <i class="bi bi-file-earmark-arrow-down me-2"></i>Export as CSV
                         </a>
@@ -157,12 +160,9 @@
                         <label for="visit_reason" class="form-label">Visit Reason</label>
                         <select class="form-control" id="visit_reason" name="visit_reason" required onchange="toggleCustomReason()">
                             <option value="">Select Visit Reason</option>
-                            <option value="reason1">Reason 1</option>
-                            <option value="reason2">Reason 2</option>
-                            <option value="reason3">Reason 3</option>
-                            <option value="reason4">Reason 4</option>
-                            <option value="reason5">Reason 5</option>
-                            <option value="reason6">Reason 6</option>
+                            {% for reason in get_active_reasons() %}
+                            <option value="{{ reason.code }}">{{ reason.description }}</option>
+                            {% endfor %}
                             <option value="other">Other</option>
                         </select>
                     </div>

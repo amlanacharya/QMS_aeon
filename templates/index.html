@@ -34,12 +34,9 @@
                     <div class="mb-3">
                         <select class="form-control" id="visit_reason" name="visit_reason" required onchange="toggleCustomReason()">
                             <option value="">Select Visit Reason</option>
-                            <option value="reason1">Reason 1</option>
-                            <option value="reason2">Reason 2</option>
-                            <option value="reason3">Reason 3</option>
-                            <option value="reason4">Reason 4</option>
-                            <option value="reason5">Reason 5</option>
-                            <option value="reason6">Reason 6</option>
+                            {% for reason in get_active_reasons() %}
+                            <option value="{{ reason.code }}">{{ reason.description }}</option>
+                            {% endfor %}
                             <option value="other">Other</option>
                         </select>
                     </div>

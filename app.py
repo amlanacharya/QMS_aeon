@@ -78,12 +78,18 @@ def broadcast_token_update():
         'queue_active': settings.queue_active
     })
 
-# Custom context processor for current year
+# Custom context processors
 @app.context_processor
 def inject_now():
     def now():
         return datetime.utcnow().strftime('%Y')
     return {'now': now}
+
+@app.context_processor
+def inject_helpers():
+    return {
+        'get_active_reasons': get_active_reasons
+    }
 
 db = SQLAlchemy(app)
 
@@ -109,6 +115,16 @@ class Settings(db.Model):
     current_token_id = db.Column(db.Integer, default=0)
     last_token_number = db.Column(db.Integer, default=0)
 
+# Visit reason model
+class Reason(db.Model):
+    __tablename__ = 'reasons'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False, unique=True)  # e.g., 'reason1'
+    description = db.Column(db.String(100), nullable=False)  # e.g., 'Reason 1'
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 # Create tables if they don't exist
 with app.app_context():
     db.create_all()
@@ -117,9 +133,25 @@ with app.app_context():
         db.session.add(Settings(queue_active=True, current_token_id=0, last_token_number=0))
         db.session.commit()
 
+    # Initialize default reasons if not present
+    if not Reason.query.first():
+        default_reasons = [
+            Reason(code='reason1', description='Reason 1'),
+            Reason(code='reason2', description='Reason 2'),
+            Reason(code='reason3', description='Reason 3'),
+            Reason(code='reason4', description='Reason 4'),
+            Reason(code='reason5', description='Reason 5'),
+            Reason(code='reason6', description='Reason 6'),
+        ]
+        db.session.add_all(default_reasons)
+        db.session.commit()
+
 # Helper functions
 def get_settings():
     return Settings.query.first()
+
+def get_active_reasons():
+    return Reason.query.filter_by(is_active=True).order_by(Reason.code).all()
 
 def get_current_token():
     settings = get_settings()
@@ -682,6 +714,92 @@ def serve_token(token_id):
 
     flash(f'Now serving token {token.token_number}', 'success')
     return redirect(url_for('admin'))
+
+# Reason Management Routes
+@app.route('/manage-reasons')
+def manage_reasons():
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+
+    reasons = Reason.query.order_by(Reason.code).all()
+    return render_template('manage_reasons.html', reasons=reasons)
+
+@app.route('/add-reason', methods=['GET', 'POST'])
+def add_reason():
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        code = request.form.get('code')
+        description = request.form.get('description')
+        is_active = request.form.get('is_active') == 'on'
+
+        # Check if code already exists
+        existing_reason = Reason.query.filter_by(code=code).first()
+        if existing_reason:
+            flash(f'Reason code "{code}" already exists', 'error')
+            return redirect(url_for('add_reason'))
+
+        new_reason = Reason(code=code, description=description, is_active=is_active)
+        db.session.add(new_reason)
+        db.session.commit()
+
+        flash(f'Reason "{description}" added successfully', 'success')
+        return redirect(url_for('manage_reasons'))
+
+    return render_template('add_reason.html')
+
+@app.route('/edit-reason/<int:reason_id>', methods=['GET', 'POST'])
+def edit_reason(reason_id):
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+
+    reason = Reason.query.get_or_404(reason_id)
+
+    if request.method == 'POST':
+        code = request.form.get('code')
+        description = request.form.get('description')
+        is_active = request.form.get('is_active') == 'on'
+
+        # Check if code already exists and it's not this reason's code
+        existing_reason = Reason.query.filter_by(code=code).first()
+        if existing_reason and existing_reason.id != reason_id:
+            flash(f'Reason code "{code}" already exists', 'error')
+            return redirect(url_for('edit_reason', reason_id=reason_id))
+
+        reason.code = code
+        reason.description = description
+        reason.is_active = is_active
+        reason.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        flash(f'Reason "{description}" updated successfully', 'success')
+        return redirect(url_for('manage_reasons'))
+
+    return render_template('edit_reason.html', reason=reason)
+
+@app.route('/delete-reason/<int:reason_id>')
+def delete_reason(reason_id):
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+
+    reason = Reason.query.get_or_404(reason_id)
+
+    # Check if this reason is being used by any tokens
+    tokens_using_reason = Token.query.filter(Token.visit_reason.like(f'{reason.code}%')).count()
+    if tokens_using_reason > 0:
+        flash(f'Cannot delete reason "{reason.description}" as it is used by {tokens_using_reason} tokens', 'error')
+        return redirect(url_for('manage_reasons'))
+
+    db.session.delete(reason)
+    db.session.commit()
+
+    flash(f'Reason "{reason.description}" deleted successfully', 'success')
+    return redirect(url_for('manage_reasons'))
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

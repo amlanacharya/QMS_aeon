@@ -1,0 +1,269 @@
+<!-- templates/enhanced_analytics.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">Enhanced Analytics Dashboard</h2>
+            <div>
+                <a href="{{ url_for('service_analytics') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-clock-history me-1"></i>Basic Analytics
+                </a>
+                <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Admin
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Total Tokens</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="display-4">{{ total_tokens }}</h2>
+                    <div class="progress mt-2">
+                        <div class="progress-bar bg-success" style="width: {{ (total_served / total_tokens * 100) if total_tokens > 0 else 0 }}%">
+                            {{ total_served }}
+                        </div>
+                        <div class="progress-bar bg-warning" style="width: {{ (total_skipped / total_tokens * 100) if total_tokens > 0 else 0 }}%">
+                            {{ total_skipped }}
+                        </div>
+                        <div class="progress-bar bg-primary" style="width: {{ (total_pending / total_tokens * 100) if total_tokens > 0 else 0 }}%">
+                            {{ total_pending }}
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2 small">
+                        <span class="text-success">Served</span>
+                        <span class="text-warning">Skipped</span>
+                        <span class="text-primary">Pending</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Avg. Waiting Time</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="display-4">{{ avg_waiting_time|round(1) }}</h2>
+                    <p class="text-muted">Minutes from creation to service</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Avg. Service Duration</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="display-4">{{ avg_service_duration|round(1) }}</h2>
+                    <p class="text-muted">Minutes to complete service</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Recalls & Skips</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="row">
+                        <div class="col-6 border-end">
+                            <h3>{{ total_recalls }}</h3>
+                            <p class="text-muted small">Recalls</p>
+                        </div>
+                        <div class="col-6">
+                            <h3>{{ total_skips }}</h3>
+                            <p class="text-muted small">Skips</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time-based Analytics -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-secondary h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Day of Week Analysis</h5>
+                </div>
+                <div class="card-body">
+                    {% if day_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Total</th>
+                                    <th>Served</th>
+                                    <th>Skipped</th>
+                                    <th>Efficiency</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for day, stats in day_stats.items() %}
+                                <tr>
+                                    <td>{{ day }}</td>
+                                    <td>{{ stats.count }}</td>
+                                    <td>{{ stats.served }}</td>
+                                    <td>{{ stats.skipped }}</td>
+                                    <td>
+                                        {% if stats.count > 0 %}
+                                        <div class="progress" style="height: 15px;">
+                                            <div class="progress-bar bg-success" 
+                                                 style="width: {{ (stats.served / stats.count * 100)|round }}%"
+                                                 title="{{ (stats.served / stats.count * 100)|round }}%">
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        N/A
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">No data available for analysis.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-secondary h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Hour of Day Analysis</h5>
+                </div>
+                <div class="card-body">
+                    {% if hour_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Hour</th>
+                                    <th>Total</th>
+                                    <th>Served</th>
+                                    <th>Skipped</th>
+                                    <th>Efficiency</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hour, stats in hour_stats.items()|sort %}
+                                <tr>
+                                    <td>{{ hour }}:00</td>
+                                    <td>{{ stats.count }}</td>
+                                    <td>{{ stats.served }}</td>
+                                    <td>{{ stats.skipped }}</td>
+                                    <td>
+                                        {% if stats.count > 0 %}
+                                        <div class="progress" style="height: 15px;">
+                                            <div class="progress-bar bg-success" 
+                                                 style="width: {{ (stats.served / stats.count * 100)|round }}%"
+                                                 title="{{ (stats.served / stats.count * 100)|round }}%">
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        N/A
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">No data available for analysis.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reason-based Analytics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-dark">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Visit Reason Analysis</h5>
+                </div>
+                <div class="card-body">
+                    {% if reason_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Visit Reason</th>
+                                    <th>Total</th>
+                                    <th>Served</th>
+                                    <th>Skipped</th>
+                                    <th>Pending</th>
+                                    <th>Recalls</th>
+                                    <th>Skips</th>
+                                    <th>Avg. Wait (min)</th>
+                                    <th>Avg. Service (min)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reason, stats in reason_stats.items() %}
+                                <tr>
+                                    <td>{{ reason }}</td>
+                                    <td>{{ stats.count }}</td>
+                                    <td>{{ stats.served }}</td>
+                                    <td>{{ stats.skipped }}</td>
+                                    <td>{{ stats.pending }}</td>
+                                    <td>{{ stats.total_recalls }}</td>
+                                    <td>{{ stats.total_skips }}</td>
+                                    <td>{{ stats.avg_waiting_time|round(1) if stats.served > 0 else '-' }}</td>
+                                    <td>{{ stats.avg_service_duration|round(1) if stats.served > 0 else '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">No data available for analysis.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Export Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Data Export Options</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('export_data', format='csv') }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export as CSV
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-grid gap-2">
+                                <a href="{{ url_for('export_data', format='excel') }}" class="btn btn-outline-success">
+                                    <i class="bi bi-file-earmark-excel me-2"></i>Export as Excel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -110,6 +110,14 @@ class Token(db.Model):
     # New fields for service time tracking
     served_at = db.Column(db.DateTime, nullable=True)
     service_duration = db.Column(db.Integer, nullable=True)  # Duration in seconds
+    # New fields for enhanced analytics
+    skip_count = db.Column(db.Integer, default=0)  # Track number of times skipped
+    last_skipped_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)  # When service was completed
+    resolution_outcome = db.Column(db.String(50), nullable=True)  # e.g., 'RESOLVED', 'REFERRED', etc.
+    staff_id = db.Column(db.String(50), nullable=True)  # ID of staff who served the token
+    complexity_level = db.Column(db.Integer, nullable=True)  # 1-5 rating of case complexity
+    customer_feedback = db.Column(db.Integer, nullable=True)  # 1-5 rating from customer
 
     @property
     def waiting_time(self):
@@ -118,6 +126,24 @@ class Token(db.Model):
             return None
         delta = self.served_at - self.created_at
         return int(delta.total_seconds() / 60)
+
+    @property
+    def total_service_time(self):
+        """Calculate total time from creation to completion in minutes"""
+        if not self.completed_at:
+            return None
+        delta = self.completed_at - self.created_at
+        return int(delta.total_seconds() / 60)
+
+    @property
+    def day_of_week(self):
+        """Get the day of week when token was created"""
+        return self.created_at.strftime('%A')
+
+    @property
+    def hour_of_day(self):
+        """Get the hour of day when token was created"""
+        return self.created_at.hour
 
 # System settings model
 class Settings(db.Model):
@@ -135,6 +161,21 @@ class Reason(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# Staff model for tracking who serves which token
+class Staff(db.Model):
+    __tablename__ = 'staff'
+    id = db.Column(db.Integer, primary_key=True)
+    staff_id = db.Column(db.String(20), nullable=False, unique=True)  # Staff ID or username
+    name = db.Column(db.String(100), nullable=False)
+    role = db.Column(db.String(50))  # e.g., 'admin', 'operator', etc.
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime, nullable=True)
+
+    # Statistics
+    tokens_served = db.Column(db.Integer, default=0)
+    avg_service_time = db.Column(db.Float, default=0.0)  # in minutes
 
 # Create tables if they don't exist
 with app.app_context():
@@ -314,6 +355,10 @@ def skip_token():
     if current_token:
         # Mark the current token as SKIPPED
         current_token.status = 'SKIPPED'
+
+        # Increment skip count and record skip time
+        current_token.skip_count += 1
+        current_token.last_skipped_at = datetime.utcnow()
 
         # Find the next token to serve
         next_token = get_next_token()
@@ -896,6 +941,116 @@ def service_analytics():
                           avg_service_duration=avg_service_duration,
                           reason_stats=reason_stats,
                           served_tokens=served_tokens)
+
+# Enhanced Analytics Route with AI-Ready Data
+@app.route('/enhanced-analytics')
+def enhanced_analytics():
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+
+    # Get all tokens
+    all_tokens = Token.query.all()
+    served_tokens = [t for t in all_tokens if t.status == 'SERVED' and t.served_at is not None]
+    skipped_tokens = [t for t in all_tokens if t.status == 'SKIPPED' or t.skip_count > 0]
+    pending_tokens = [t for t in all_tokens if t.status == 'PENDING']
+
+    # Basic counts
+    total_tokens = len(all_tokens)
+    total_served = len(served_tokens)
+    total_skipped = len(skipped_tokens)
+    total_pending = len(pending_tokens)
+
+    # Calculate service metrics
+    if total_served > 0:
+        avg_waiting_time = sum(token.waiting_time or 0 for token in served_tokens) / total_served
+        avg_service_duration = sum(token.service_duration or 0 for token in served_tokens) / total_served / 60
+        total_recalls = sum(token.recall_count or 0 for token in all_tokens)
+        total_skips = sum(token.skip_count or 0 for token in all_tokens)
+    else:
+        avg_waiting_time = 0
+        avg_service_duration = 0
+        total_recalls = 0
+        total_skips = 0
+
+    # Time-based analytics
+    day_stats = {}
+    hour_stats = {}
+
+    for token in all_tokens:
+        # Day of week stats
+        day = token.day_of_week
+        if day not in day_stats:
+            day_stats[day] = {'count': 0, 'served': 0, 'skipped': 0}
+
+        day_stats[day]['count'] += 1
+        if token.status == 'SERVED':
+            day_stats[day]['served'] += 1
+        elif token.status == 'SKIPPED' or token.skip_count > 0:
+            day_stats[day]['skipped'] += 1
+
+        # Hour of day stats
+        hour = token.hour_of_day
+        if hour not in hour_stats:
+            hour_stats[hour] = {'count': 0, 'served': 0, 'skipped': 0}
+
+        hour_stats[hour]['count'] += 1
+        if token.status == 'SERVED':
+            hour_stats[hour]['served'] += 1
+        elif token.status == 'SKIPPED' or token.skip_count > 0:
+            hour_stats[hour]['skipped'] += 1
+
+    # Reason analytics with more details
+    reason_stats = {}
+    for token in all_tokens:
+        reason = token.visit_reason
+        if reason not in reason_stats:
+            reason_stats[reason] = {
+                'count': 0,
+                'served': 0,
+                'skipped': 0,
+                'pending': 0,
+                'total_waiting_time': 0,
+                'total_service_duration': 0,
+                'total_recalls': 0,
+                'total_skips': 0
+            }
+
+        reason_stats[reason]['count'] += 1
+        reason_stats[reason]['total_recalls'] += token.recall_count or 0
+        reason_stats[reason]['total_skips'] += token.skip_count or 0
+
+        if token.status == 'SERVED':
+            reason_stats[reason]['served'] += 1
+            reason_stats[reason]['total_waiting_time'] += token.waiting_time or 0
+            reason_stats[reason]['total_service_duration'] += token.service_duration or 0 if token.service_duration else 0
+        elif token.status == 'SKIPPED' or token.skip_count > 0:
+            reason_stats[reason]['skipped'] += 1
+        elif token.status == 'PENDING':
+            reason_stats[reason]['pending'] += 1
+
+    # Calculate averages for each reason
+    for reason, stats in reason_stats.items():
+        if stats['served'] > 0:
+            stats['avg_waiting_time'] = stats['total_waiting_time'] / stats['served']
+            stats['avg_service_duration'] = stats['total_service_duration'] / stats['served'] / 60
+        else:
+            stats['avg_waiting_time'] = 0
+            stats['avg_service_duration'] = 0
+
+    return render_template('enhanced_analytics.html',
+                          total_tokens=total_tokens,
+                          total_served=total_served,
+                          total_skipped=total_skipped,
+                          total_pending=total_pending,
+                          avg_waiting_time=avg_waiting_time,
+                          avg_service_duration=avg_service_duration,
+                          total_recalls=total_recalls,
+                          total_skips=total_skips,
+                          day_stats=day_stats,
+                          hour_stats=hour_stats,
+                          reason_stats=reason_stats,
+                          all_tokens=all_tokens)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

@@ -130,9 +130,17 @@ def get_current_token():
 def get_next_token():
     current_token = get_current_token()
     if not current_token:
+        # If there's no current token, return the first pending token
         next_token = Token.query.filter_by(status='PENDING').order_by(Token.id).first()
     else:
+        # First try to get the next token with a higher ID
         next_token = Token.query.filter(Token.id > current_token.id, Token.status == 'PENDING').order_by(Token.id).first()
+
+        # If there's no pending token with a higher ID (e.g., when serving the last token first),
+        # get the first pending token with a lower ID
+        if not next_token:
+            next_token = Token.query.filter(Token.id < current_token.id, Token.status == 'PENDING').order_by(Token.id).first()
+
     return next_token
 
 def generate_token_number():
@@ -218,7 +226,7 @@ def next_token():
     else:
         flash('No more pending tokens in queue', 'info')
 
-    return redirect(url_for('index'))
+    return redirect(url_for('admin'))
 
 @app.route('/recall-token')
 def recall_token():
@@ -246,7 +254,7 @@ def recall_token():
     else:
         flash('No active token to recall', 'error')
 
-    return redirect(url_for('index'))
+    return redirect(url_for('admin'))
 
 @app.route('/skip-token')
 def skip_token():
@@ -256,13 +264,30 @@ def skip_token():
 
     current_token = get_current_token()
     if current_token:
+        # Mark the current token as SKIPPED
         current_token.status = 'SKIPPED'
+
+        # Find the next token to serve
+        next_token = get_next_token()
+
+        # Clear the current token
+        settings = get_settings()
+        settings.current_token_id = 0
         db.session.commit()
+
+        # If there's a next token available, set it as the current token
+        if next_token:
+            settings.current_token_id = next_token.id
+            db.session.commit()
 
         # Broadcast token update to all connected clients
         broadcast_token_update()
 
-    return redirect(url_for('next_token'))
+        flash(f'Token {current_token.token_number} has been skipped', 'warning')
+    else:
+        flash('No active token to skip', 'error')
+
+    return redirect(url_for('admin'))
 
 # Admin routes
 @app.route('/admin')
@@ -508,22 +533,44 @@ def reset_database():
 def revert_token_status(token_id):
     if not is_admin():
         flash('Admin access required', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('admin'))
 
     token = Token.query.get_or_404(token_id)
 
     # Store previous status for message
     previous_status = token.status
 
+    # Get the current token before making any changes
+    current_token = get_current_token()
+
+    # Check if this token was created before the current token
+    # This helps determine if it should be the next to be served
+    is_earlier_token = current_token and token.id < current_token.id
+
     # Revert to PENDING
     token.status = 'PENDING'
 
-    # If this was the current token, clear it
+    # If this was the current token, clear it and find the next token to serve
     settings = get_settings()
     if settings.current_token_id == token_id:
         settings.current_token_id = 0  # Set to 0 instead of None for consistency
+        db.session.commit()
 
-    db.session.commit()
+        # Find the next token to serve
+        next_token = get_next_token()
+        if next_token:
+            settings.current_token_id = next_token.id
+            db.session.commit()
+    else:
+        # If this token came before the current token and is now pending,
+        # it should be the next token to be served
+        if is_earlier_token:
+            # We don't need to do anything special here because get_next_token()
+            # will correctly identify this token as the next one to be served
+            # since it has a lower ID than the current token
+            pass
+
+        db.session.commit()
 
     # Broadcast token update to all connected clients
     broadcast_token_update()
@@ -535,7 +582,7 @@ def revert_token_status(token_id):
 def edit_token(token_id):
     if not is_admin():
         flash('Admin access required', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('admin'))
 
     token = Token.query.get_or_404(token_id)
 
@@ -574,10 +621,66 @@ def delete_token(token_id):
     # Store token number for message
     token_number = token.token_number
 
+    # Check if this token is the next token that would be served
+    next_token = get_next_token()
+    is_next_token = next_token and next_token.id == token.id
+
+    # Delete the token
     db.session.delete(token)
     db.session.commit()
 
+    # If we deleted the next token that would be served, we need to update the display
+    # to show the new next token
+    if is_next_token:
+        # Get the new next token after deletion
+        new_next_token = get_next_token()
+
+        # If there's no current token but there is a new next token, make it the current token
+        settings = get_settings()
+        if settings.current_token_id == 0 and new_next_token:
+            settings.current_token_id = new_next_token.id
+            db.session.commit()
+
+    # Broadcast token update to all connected clients
+    broadcast_token_update()
+
     flash(f'Token {token_number} has been deleted', 'success')
+    return redirect(url_for('admin'))
+
+@app.route('/serve-token/<int:token_id>')
+def serve_token(token_id):
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+
+    token = Token.query.get_or_404(token_id)
+
+    # Only pending tokens can be served
+    if token.status != 'PENDING':
+        flash(f'Only pending tokens can be served. Token {token.token_number} is {token.status}', 'error')
+        return redirect(url_for('admin'))
+
+    # No need to check if token is out of order anymore
+    # Our improved get_next_token() function handles all cases
+
+    # If there's a current token, mark it as served
+    settings = get_settings()
+    current_token = get_current_token()
+    if current_token:
+        current_token.status = 'SERVED'
+        db.session.commit()
+
+    # Set the selected token as current
+    settings.current_token_id = token.id
+    db.session.commit()
+
+    # We don't need to do anything special here anymore since we've updated
+    # the get_next_token() function to handle all cases correctly
+
+    # Broadcast token update to all connected clients
+    broadcast_token_update()
+
+    flash(f'Now serving token {token.token_number}', 'success')
     return redirect(url_for('admin'))
 
 if __name__ == '__main__':

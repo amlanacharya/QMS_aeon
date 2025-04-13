@@ -59,15 +59,18 @@
         </div>
 
         <div class="col-md-8">
-            <div class="card border-info h-100">
-                <div class="card-header bg-info text-white">
+            <div class="card border-success h-100">
+                <div class="card-header bg-success text-white">
                     <h5 class="mb-0">Current Token Status</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="card border-success mb-3">
-                                <div class="card-header bg-success text-white">Now Serving</div>
+                                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                                    <span>Now Serving</span>
+                                    <div class="badge bg-success text-white" style="border: 1px solid white;">LIVE</div>
+                                </div>
                                 <div class="card-body text-center">
                                     {% if current_token %}
                                     <h1 class="display-4">{{ current_token.token_number }}</h1>

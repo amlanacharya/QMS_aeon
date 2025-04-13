@@ -1,0 +1,140 @@
+<!-- templates/service_analytics.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">Service Time Analytics</h2>
+            <a href="{{ url_for('admin') }}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left me-1"></i>Back to Admin
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-primary h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Total Served</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="display-4">{{ total_served }}</h2>
+                    <p class="text-muted">Tokens completed</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-success h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Average Waiting Time</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="display-4">{{ avg_waiting_time|round(1) }}</h2>
+                    <p class="text-muted">Minutes from creation to service</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-info h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Average Service Duration</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="display-4">{{ avg_service_duration|round(1) }}</h2>
+                    <p class="text-muted">Minutes to complete service</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reason-based Analytics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-secondary">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Service Time by Visit Reason</h5>
+                </div>
+                <div class="card-body">
+                    {% if reason_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Visit Reason</th>
+                                    <th>Count</th>
+                                    <th>Avg. Waiting Time (min)</th>
+                                    <th>Avg. Service Duration (min)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reason, stats in reason_stats.items() %}
+                                <tr>
+                                    <td>{{ reason }}</td>
+                                    <td>{{ stats.count }}</td>
+                                    <td>{{ stats.avg_waiting_time|round(1) }}</td>
+                                    <td>{{ stats.avg_service_duration|round(1) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        No data available for analysis. Start serving tokens to see analytics.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Token History -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-dark">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Detailed Service History</h5>
+                </div>
+                <div class="card-body">
+                    {% if served_tokens %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Customer</th>
+                                    <th>Visit Reason</th>
+                                    <th>Created At</th>
+                                    <th>Served At</th>
+                                    <th>Waiting Time (min)</th>
+                                    <th>Service Duration (min)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for token in served_tokens %}
+                                <tr>
+                                    <td>{{ token.token_number }}</td>
+                                    <td>{{ token.customer_name }}</td>
+                                    <td>{{ token.visit_reason }}</td>
+                                    <td>{{ token.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ token.served_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ token.waiting_time }}</td>
+                                    <td>{{ (token.service_duration / 60)|round(1) if token.service_duration else '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        No served tokens found. Start serving tokens to see detailed history.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

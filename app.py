@@ -107,6 +107,17 @@ class Token(db.Model):
     # New fields for recall tracking
     recall_count = db.Column(db.Integer, default=0)
     last_recalled_at = db.Column(db.DateTime, nullable=True)
+    # New fields for service time tracking
+    served_at = db.Column(db.DateTime, nullable=True)
+    service_duration = db.Column(db.Integer, nullable=True)  # Duration in seconds
+
+    @property
+    def waiting_time(self):
+        """Calculate waiting time in minutes from creation to being served"""
+        if not self.served_at:
+            return None
+        delta = self.served_at - self.created_at
+        return int(delta.total_seconds() / 60)
 
 # System settings model
 class Settings(db.Model):
@@ -248,6 +259,11 @@ def next_token():
         current_token = get_current_token()
         if current_token:
             current_token.status = 'SERVED'
+            current_token.served_at = datetime.utcnow()
+            # Calculate service duration in seconds
+            if current_token.created_at:
+                delta = current_token.served_at - current_token.created_at
+                current_token.service_duration = int(delta.total_seconds())
             db.session.commit()
 
         settings.current_token_id = next_token.id
@@ -395,14 +411,26 @@ def export_data():
     # Convert to DataFrame with correct fields
     data = []
     for token in tokens:
-        data.append({
+        token_data = {
             'Token Number': token.token_number,
             'Visit Reason': token.visit_reason,
             'Phone Number': token.phone_number,
             'Customer Name': token.customer_name,
             'Status': token.status,
-            'Created At': token.created_at
-        })
+            'Created At': token.created_at,
+            'Recall Count': token.recall_count
+        }
+
+        # Add service time data if available
+        if token.served_at:
+            token_data['Served At'] = token.served_at
+            token_data['Waiting Time (min)'] = token.waiting_time
+
+            if token.service_duration is not None:
+                # Convert seconds to minutes for better readability
+                token_data['Service Duration (min)'] = round(token.service_duration / 60, 1)
+
+        data.append(token_data)
 
     df = pd.DataFrame(data)
 
@@ -516,7 +544,7 @@ def reset_database():
                     tokens = Token.query.all()
                     data = []
                     for token in tokens:
-                        data.append({
+                        token_data = {
                             'Token Number': token.token_number,
                             'Visit Reason': token.visit_reason,
                             'Phone Number': token.phone_number,
@@ -524,7 +552,18 @@ def reset_database():
                             'Status': token.status,
                             'Created At': token.created_at,
                             'Recall Count': token.recall_count
-                        })
+                        }
+
+                        # Add service time data if available
+                        if token.served_at:
+                            token_data['Served At'] = token.served_at
+                            token_data['Waiting Time (min)'] = token.waiting_time
+
+                            if token.service_duration is not None:
+                                # Convert seconds to minutes for better readability
+                                token_data['Service Duration (min)'] = round(token.service_duration / 60, 1)
+
+                        data.append(token_data)
 
                     # Create a backup filename with timestamp
                     backup_time = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
@@ -700,6 +739,11 @@ def serve_token(token_id):
     current_token = get_current_token()
     if current_token:
         current_token.status = 'SERVED'
+        current_token.served_at = datetime.utcnow()
+        # Calculate service duration in seconds
+        if current_token.created_at:
+            delta = current_token.served_at - current_token.created_at
+            current_token.service_duration = int(delta.total_seconds())
         db.session.commit()
 
     # Set the selected token as current
@@ -800,6 +844,58 @@ def delete_reason(reason_id):
 
     flash(f'Reason "{reason.description}" deleted successfully', 'success')
     return redirect(url_for('manage_reasons'))
+
+# Service Time Analytics Route
+@app.route('/service-analytics')
+def service_analytics():
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+
+    # Get all tokens that have been served
+    served_tokens = Token.query.filter(Token.status == 'SERVED', Token.served_at.isnot(None)).all()
+
+    # Calculate analytics
+    total_served = len(served_tokens)
+
+    if total_served > 0:
+        # Calculate average waiting time
+        avg_waiting_time = sum(token.waiting_time or 0 for token in served_tokens) / total_served
+
+        # Calculate average service duration
+        avg_service_duration = sum(token.service_duration or 0 for token in served_tokens) / total_served / 60  # Convert to minutes
+
+        # Group by visit reason
+        reason_stats = {}
+        for token in served_tokens:
+            reason = token.visit_reason
+            if reason not in reason_stats:
+                reason_stats[reason] = {
+                    'count': 0,
+                    'total_waiting_time': 0,
+                    'total_service_duration': 0
+                }
+
+            reason_stats[reason]['count'] += 1
+            reason_stats[reason]['total_waiting_time'] += token.waiting_time or 0
+            reason_stats[reason]['total_service_duration'] += token.service_duration or 0
+
+        # Calculate averages for each reason
+        for reason in reason_stats:
+            count = reason_stats[reason]['count']
+            reason_stats[reason]['avg_waiting_time'] = reason_stats[reason]['total_waiting_time'] / count
+            reason_stats[reason]['avg_service_duration'] = reason_stats[reason]['total_service_duration'] / count / 60  # Convert to minutes
+    else:
+        avg_waiting_time = 0
+        avg_service_duration = 0
+        reason_stats = {}
+
+    return render_template('service_analytics.html',
+                          total_served=total_served,
+                          avg_waiting_time=avg_waiting_time,
+                          avg_service_duration=avg_service_duration,
+                          reason_stats=reason_stats,
+                          served_tokens=served_tokens)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

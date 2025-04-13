@@ -1352,5 +1352,30 @@ def serve_token(token_id):
     else:
         return redirect(url_for('employee_dashboard'))
 
+# User Guide Route - Only accessible to authenticated users
+@app.route('/user-guide')
+def user_guide():
+    # Check if user is authenticated (either admin or employee)
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    # Read the markdown file
+    try:
+        with open('QMS_User_Guide.md', 'r') as file:
+            content = file.read()
+
+        # Convert markdown to HTML
+        import markdown
+        html_content = markdown.markdown(content, extensions=['tables', 'toc'])
+
+        return render_template('user_guide.html', content=html_content)
+    except Exception as e:
+        flash(f'Error loading user guide: {str(e)}', 'error')
+        if is_admin():
+            return redirect(url_for('admin'))
+        else:
+            return redirect(url_for('employee_dashboard'))
+
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

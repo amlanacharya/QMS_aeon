@@ -1,0 +1,111 @@
+<!-- templates/user_guide.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">QMS User Guide</h4>
+                <div>
+                    {% if session.is_admin %}
+                    <a href="{{ url_for('admin') }}" class="btn btn-sm btn-outline-light">Back to Admin Dashboard</a>
+                    {% else %}
+                    <a href="{{ url_for('employee_dashboard') }}" class="btn btn-sm btn-outline-light">Back to Employee Dashboard</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="user-guide-content">
+                    {{ content|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .user-guide-content {
+        font-size: 16px;
+        line-height: 1.6;
+    }
+    
+    .user-guide-content h1 {
+        margin-top: 30px;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .user-guide-content h2 {
+        margin-top: 25px;
+        margin-bottom: 15px;
+        color: #007bff;
+    }
+    
+    .user-guide-content h3 {
+        margin-top: 20px;
+        margin-bottom: 10px;
+        color: #6c757d;
+    }
+    
+    .user-guide-content ul, 
+    .user-guide-content ol {
+        margin-bottom: 15px;
+    }
+    
+    .user-guide-content table {
+        width: 100%;
+        margin-bottom: 20px;
+        border-collapse: collapse;
+    }
+    
+    .user-guide-content table, 
+    .user-guide-content th, 
+    .user-guide-content td {
+        border: 1px solid #dee2e6;
+        padding: 8px;
+    }
+    
+    .user-guide-content th {
+        background-color: #f8f9fa;
+        text-align: left;
+    }
+    
+    .user-guide-content tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+    
+    .user-guide-content code {
+        background-color: #f8f9fa;
+        padding: 2px 4px;
+        border-radius: 4px;
+        color: #e83e8c;
+    }
+    
+    .user-guide-content blockquote {
+        border-left: 4px solid #007bff;
+        padding-left: 15px;
+        color: #6c757d;
+    }
+    
+    /* Print styles */
+    @media print {
+        .card-header, 
+        footer, 
+        .btn {
+            display: none !important;
+        }
+        
+        .card {
+            border: none !important;
+        }
+        
+        .card-body {
+            padding: 0 !important;
+        }
+    }
+</style>
+{% endblock %}

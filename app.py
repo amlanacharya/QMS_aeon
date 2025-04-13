@@ -31,6 +31,9 @@ class Token(db.Model):
     customer_name = db.Column(db.String(100))
     status = db.Column(db.String(20), default='PENDING')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # New fields for recall tracking
+    recall_count = db.Column(db.Integer, default=0)
+    last_recalled_at = db.Column(db.DateTime, nullable=True)
 
 # System settings model
 class Settings(db.Model):
@@ -153,7 +156,23 @@ def recall_token():
         flash('Admin access required', 'error')
         return redirect(url_for('index'))
     
-    # Just redirects back - the current token will be displayed again
+    current_token = get_current_token()
+    if current_token:
+        # Add recall count to track number of recalls
+        if not hasattr(current_token, 'recall_count'):
+            current_token.recall_count = 0
+        current_token.recall_count += 1
+        
+        # Add last recall time
+        current_token.last_recalled_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Flash message with recall count
+        flash(f'Recalling token {current_token.token_number} (Recall #{current_token.recall_count})', 'warning')
+    else:
+        flash('No active token to recall', 'error')
+    
     return redirect(url_for('index'))
 
 @app.route('/skip-token')

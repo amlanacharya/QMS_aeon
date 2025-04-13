@@ -14,17 +14,24 @@
                     <div class="col-md-6">
                         <div class="token-container text-center">
                             <h2>NOW SERVING</h2>
-                            {% if current_token %}
-                                <div class="current-token">{{ current_token.token_number }}</div>
-                                <p>
-                                    <strong>Name:</strong> {{ current_token.customer_name }}<br>
-                                    <strong>App No:</strong> {{ current_token.application_number }}<br>
-                                    <strong>Phone:</strong> {{ current_token.phone_number }}
-                                </p>
-                            {% else %}
-                                <div class="current-token">---</div>
-                                <p>No active token</p>
-                            {% endif %}
+                            <div class="current-token-info">
+                                {% if current_token %}
+                                    <div class="current-token">{{ current_token.token_number }}</div>
+                                    <p>Customer: {{ current_token.customer_name }}</p>
+                                    <p>Reason: {{ current_token.visit_reason }}</p>
+                                    {% if current_token.recall_count > 0 %}
+                                        <p class="text-warning">
+                                            <i class="bi bi-megaphone"></i> 
+                                            Recalled {{ current_token.recall_count }} times
+                                            <br>
+                                            <small>Last recall: {{ current_token.last_recalled_at.strftime('%H:%M:%S') }}</small>
+                                        </p>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="current-token">---</div>
+                                    <p>No active token</p>
+                                {% endif %}
+                            </div>
                             
                             <div class="next-token mt-3">
                                 <strong>NEXT: </strong>
@@ -38,8 +45,14 @@
                         
                         <div class="d-flex justify-content-center mt-3 gap-2">
                             <a href="{{ url_for('next_token') }}" class="btn btn-primary">Next</a>
-                            <a href="{{ url_for('recall_token') }}" class="btn btn-info">Recall</a>
-                            <a href="{{ url_for('skip_token') }}" class="btn btn-warning">Skip</a>
+                            <a href="{{ url_for('recall_token') }}" class="btn btn-warning" 
+                               {% if not current_token %}disabled{% endif %}>
+                                <i class="bi bi-megaphone"></i> Recall
+                                {% if current_token and current_token.recall_count > 0 %}
+                                    ({{ current_token.recall_count }})
+                                {% endif %}
+                            </a>
+                            <a href="{{ url_for('skip_token') }}" class="btn btn-danger">Skip</a>
                         </div>
                     </div>
                     

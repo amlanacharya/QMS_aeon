@@ -8,7 +8,7 @@ import pandas as pd
 import io
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SECRET_KEY'] = 'SECRETPASS'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tokens.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -584,8 +584,8 @@ def export_data():
                 'Status': token.status,
                 'Created At': token.created_at,
                 'Recall Count': token.recall_count,
-                'Skip Count': token.skip_count,  # Make sure this is included
-                'Was Skipped': token.skip_count > 0,  # Add a boolean for easier filtering
+                'Skip Count': token.skip_count,  
+                'Was Skipped': token.skip_count > 0,
             }
 
             # Add skipped token specific data
@@ -630,10 +630,8 @@ def export_data():
         export_format = request.args.get('format', 'csv')
 
         if export_format == 'excel':
-            # For Excel, we'll include all analytics data in separate sheets
             output = io.BytesIO()
 
-            # Get all the analytics data (similar to enhanced_analytics route)
             served_tokens = [t for t in all_tokens if t.status == 'SERVED' and t.served_at is not None]
             skipped_tokens = [t for t in all_tokens if t.status == 'SKIPPED' or t.skip_count > 0]
             pending_tokens = [t for t in all_tokens if t.status == 'PENDING']
@@ -862,7 +860,7 @@ def export_data():
                 hour_df.to_excel(writer, sheet_name='Hour Analysis', index=False)
                 reason_df.to_excel(writer, sheet_name='Reason Analysis', index=False)
                 staff_df.to_excel(writer, sheet_name='Staff Performance', index=False)
-                recovery_df.to_excel(writer, sheet_name='Recovery Analysis', index=False)  # New sheet
+                recovery_df.to_excel(writer, sheet_name='Recovery Analysis', index=False)  
 
                 # Format the Excel file
                 workbook = writer.book
@@ -923,9 +921,6 @@ def export_data():
             return redirect(url_for('admin'))
         else:
             return redirect(url_for('employee_dashboard'))
-
-# New admin token generation routes
-# Update the admin_generate_token route in app.py
 
 @app.route('/admin-generate-token', methods=['POST'])
 def admin_generate_token():
@@ -1091,8 +1086,7 @@ def revert_token_status(token_id):
     # Get the current token before making any changes
     current_token = get_current_token()
 
-    # Check if this token was created before the current token
-    # This helps determine if it should be the next to be served
+    # Check if this token was created before the current token,This helps determine if it should be the next to be served
     is_earlier_token = current_token and token.id < current_token.id
 
     # Revert to PENDING
@@ -1113,9 +1107,7 @@ def revert_token_status(token_id):
         # If this token came before the current token and is now pending,
         # it should be the next token to be served
         if is_earlier_token:
-            # We don't need to do anything special here because get_next_token()
-            # will correctly identify this token as the next one to be served
-            # since it has a lower ID than the current token
+            
             pass
 
         db.session.commit()
@@ -1185,8 +1177,7 @@ def delete_token(token_id):
     db.session.delete(token)
     db.session.commit()
 
-    # If we deleted the next token that would be served, we need to update the display
-    # to show the new next token
+   
     if is_next_token:
         # Get the new next token after deletion
         new_next_token = get_next_token()
@@ -1206,8 +1197,6 @@ def delete_token(token_id):
         return redirect(url_for('admin'))
     else:
         return redirect(url_for('employee_dashboard'))
-
-# Original serve_token function has been replaced by the enhanced version below
 
 # Reason Management Routes
 @app.route('/manage-reasons')
@@ -1295,12 +1284,12 @@ def delete_reason(reason_id):
     flash(f'Reason "{reason.description}" deleted successfully', 'success')
     return redirect(url_for('manage_reasons'))
 
-# Redirect old analytics route to enhanced analytics
+# Redirect legacy analytics route to enhanced analytics
 @app.route('/service-analytics')
 def service_analytics():
     return redirect(url_for('enhanced_analytics'))
 
-# Enhanced Analytics Route with AI-Ready Data
+#route for Enchanced Analytics
 @app.route('/enhanced-analytics')
 def enhanced_analytics():
     if not is_admin() and 'employee_id' not in session:
@@ -1468,7 +1457,7 @@ def add_employee():
         employee_id=employee_id,
         name=name,
         role=role,
-        password=password,  # In production, hash this password
+        password=password,
         is_active=is_active
     )
 
@@ -1512,7 +1501,7 @@ def update_employee(employee_id):
     # Only update password if provided
     password = request.form.get('password')
     if password and password.strip():
-        employee.password = password  # In production, hash this password
+        employee.password = password  
 
     db.session.commit()
 
@@ -1545,7 +1534,7 @@ def employee_login_process():
 
     employee = Employee.query.filter_by(employee_id=employee_id).first()
 
-    if employee and employee.password == password and employee.is_active:  # In production, verify hashed password
+    if employee and employee.password == password and employee.is_active: 
         session['employee_id'] = employee.id
         session['employee_name'] = employee.name
         session['employee_role'] = employee.role
@@ -1619,7 +1608,6 @@ def start_duty():
     # Set all other employees to not on duty
     Employee.query.filter(Employee.id != employee_id).update({Employee.is_on_duty: False})
 
-    # Set this employee as on duty
     employee.is_on_duty = True
     db.session.commit()
 
@@ -1672,7 +1660,6 @@ def serve_token(token_id):
          )
         db.session.add(status_change)
         
-        # Add a note about this being a previously skipped token
         flash(f'Serving previously skipped token {token.token_number}. Token was skipped {token.skip_count} times.', 'info')
 
     # If there's a current token, mark it as served
@@ -1685,7 +1672,7 @@ def serve_token(token_id):
         # Record which employee served this token
         if 'employee_id' in session:
             employee_id = session['employee_id']
-            current_token.staff_id = str(employee_id)  # Keep field name for backward compatibility
+            current_token.staff_id = str(employee_id)
 
             # Update employee statistics
             employee = Employee.query.get(employee_id)
@@ -1703,8 +1690,7 @@ def serve_token(token_id):
 
         # Calculate service duration in seconds
         if current_token.created_at:
-            # Make sure both datetimes are comparable (either both naive or both aware)
-            # If created_at is naive (no timezone info), make served_at naive too
+        
             if current_token.created_at.tzinfo is None:
                 served_at_naive = current_token.served_at.replace(tzinfo=None)
                 delta = served_at_naive - current_token.created_at

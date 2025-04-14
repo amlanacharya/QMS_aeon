@@ -580,55 +580,273 @@ def export_data():
         flash('Access denied', 'error')
         return redirect(url_for('index'))
 
-    # Get all tokens
-    tokens = Token.query.all()
+    try:
+        # Get all tokens
+        all_tokens = Token.query.all()
 
-    # Convert to DataFrame with correct fields
-    data = []
-    for token in tokens:
-        token_data = {
-            'Token Number': token.token_number,
-            'Visit Reason': token.visit_reason,
-            'Phone Number': token.phone_number,
-            'Customer Name': token.customer_name,
-            'Status': token.status,
-            'Created At': token.created_at,
-            'Recall Count': token.recall_count
-        }
+        # Prepare token data for export
+        token_data = []
+        for token in all_tokens:
+            token_item = {
+                'Token Number': token.token_number,
+                'Visit Reason': token.visit_reason,
+                'Phone Number': token.phone_number,
+                'Customer Name': token.customer_name,
+                'Status': token.status,
+                'Created At': token.created_at,
+                'Recall Count': token.recall_count
+            }
 
-        # Add service time data if available
-        if token.served_at:
-            token_data['Served At'] = token.served_at
-            token_data['Waiting Time (min)'] = token.waiting_time
+            # Add service time data if available
+            if token.served_at:
+                token_item['Served At'] = token.served_at
+                token_item['Waiting Time (min)'] = token.waiting_time
 
-            if token.service_duration is not None:
-                # Convert seconds to minutes for better readability
-                token_data['Service Duration (min)'] = round(token.service_duration / 60, 1)
+                if token.service_duration is not None:
+                    # Convert seconds to minutes for better readability
+                    token_item['Service Duration (min)'] = round(token.service_duration / 60, 1)
 
-        data.append(token_data)
+            token_data.append(token_item)
 
-    df = pd.DataFrame(data)
+        tokens_df = pd.DataFrame(token_data)
 
-    # Determine export format (CSV or Excel)
-    export_format = request.args.get('format', 'csv')
+        # Determine export format (CSV or Excel)
+        export_format = request.args.get('format', 'csv')
 
-    if export_format == 'excel':
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, sheet_name='Tokens', index=False)
-        output.seek(0)
-        return send_file(output,
-                        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        download_name='tokens_export.xlsx',
-                        as_attachment=True)
-    else:  # Default to CSV
-        output = io.StringIO()
-        df.to_csv(output, index=False)
-        output.seek(0)
-        return send_file(io.BytesIO(output.getvalue().encode('utf-8')),
-                        mimetype='text/csv',
-                        download_name='tokens_export.csv',
-                        as_attachment=True)
+        if export_format == 'excel':
+            # For Excel, we'll include all analytics data in separate sheets
+            output = io.BytesIO()
+
+            # Get all the analytics data (similar to enhanced_analytics route)
+            served_tokens = [t for t in all_tokens if t.status == 'SERVED' and t.served_at is not None]
+            skipped_tokens = [t for t in all_tokens if t.status == 'SKIPPED' or t.skip_count > 0]
+            pending_tokens = [t for t in all_tokens if t.status == 'PENDING']
+
+            # Get all employees
+            staff_members = Employee.query.all()
+
+            # Basic counts
+            total_tokens = len(all_tokens)
+            total_served = len(served_tokens)
+            total_skipped = len(skipped_tokens)
+            total_pending = len(pending_tokens)
+
+            # Calculate service metrics
+            if total_served > 0:
+                avg_waiting_time = sum(token.waiting_time or 0 for token in served_tokens) / total_served
+                avg_service_duration = sum(token.service_duration or 0 for token in served_tokens) / total_served / 60
+                total_recalls = sum(token.recall_count or 0 for token in all_tokens)
+                total_skips = sum(token.skip_count or 0 for token in all_tokens)
+            else:
+                avg_waiting_time = 0
+                avg_service_duration = 0
+                total_recalls = 0
+                total_skips = 0
+
+            # Time-based analytics
+            day_stats = {}
+            hour_stats = {}
+
+            for token in all_tokens:
+                # Day of week stats
+                day = token.day_of_week
+                if day not in day_stats:
+                    day_stats[day] = {'count': 0, 'served': 0, 'skipped': 0}
+
+                day_stats[day]['count'] += 1
+                if token.status == 'SERVED':
+                    day_stats[day]['served'] += 1
+                elif token.status == 'SKIPPED' or token.skip_count > 0:
+                    day_stats[day]['skipped'] += 1
+
+                # Hour of day stats
+                hour = token.hour_of_day
+                if hour not in hour_stats:
+                    hour_stats[hour] = {'count': 0, 'served': 0, 'skipped': 0}
+
+                hour_stats[hour]['count'] += 1
+                if token.status == 'SERVED':
+                    hour_stats[hour]['served'] += 1
+                elif token.status == 'SKIPPED' or token.skip_count > 0:
+                    hour_stats[hour]['skipped'] += 1
+
+            # Reason analytics
+            reason_stats = {}
+            for token in all_tokens:
+                reason = token.visit_reason
+                if reason not in reason_stats:
+                    reason_stats[reason] = {
+                        'count': 0,
+                        'served': 0,
+                        'skipped': 0,
+                        'pending': 0,
+                        'total_waiting_time': 0,
+                        'total_service_duration': 0,
+                        'total_recalls': 0,
+                        'total_skips': 0
+                    }
+
+                reason_stats[reason]['count'] += 1
+                reason_stats[reason]['total_recalls'] += token.recall_count or 0
+                reason_stats[reason]['total_skips'] += token.skip_count or 0
+
+                if token.status == 'SERVED':
+                    reason_stats[reason]['served'] += 1
+                    reason_stats[reason]['total_waiting_time'] += token.waiting_time or 0
+                    reason_stats[reason]['total_service_duration'] += token.service_duration or 0 if token.service_duration else 0
+                elif token.status == 'SKIPPED' or token.skip_count > 0:
+                    reason_stats[reason]['skipped'] += 1
+                elif token.status == 'PENDING':
+                    reason_stats[reason]['pending'] += 1
+
+            # Calculate averages for each reason
+            for reason, stats in reason_stats.items():
+                if stats['served'] > 0:
+                    stats['avg_waiting_time'] = stats['total_waiting_time'] / stats['served']
+                    stats['avg_service_duration'] = stats['total_service_duration'] / stats['served'] / 60
+                else:
+                    stats['avg_waiting_time'] = 0
+                    stats['avg_service_duration'] = 0
+
+            # Create DataFrames for each analytics section
+
+            # Summary Statistics
+            summary_data = {
+                'Metric': [
+                    'Total Tokens', 'Tokens Served', 'Tokens Skipped', 'Tokens Pending',
+                    'Average Waiting Time (min)', 'Average Service Duration (min)',
+                    'Total Recalls', 'Total Skips'
+                ],
+                'Value': [
+                    total_tokens, total_served, total_skipped, total_pending,
+                    round(avg_waiting_time, 1), round(avg_service_duration, 1),
+                    total_recalls, total_skips
+                ]
+            }
+            summary_df = pd.DataFrame(summary_data)
+
+            # Day of Week Analysis
+            day_data = []
+            for day, stats in day_stats.items():
+                efficiency = round((stats['served'] / stats['count'] * 100), 1) if stats['count'] > 0 else 0
+                day_data.append({
+                    'Day': day,
+                    'Total': stats['count'],
+                    'Served': stats['served'],
+                    'Skipped': stats['skipped'],
+                    'Efficiency (%)': efficiency
+                })
+            day_df = pd.DataFrame(day_data)
+
+            # Hour of Day Analysis
+            hour_data = []
+            for hour, stats in hour_stats.items():
+                efficiency = round((stats['served'] / stats['count'] * 100), 1) if stats['count'] > 0 else 0
+                hour_data.append({
+                    'Hour': f"{hour}:00",
+                    'Total': stats['count'],
+                    'Served': stats['served'],
+                    'Skipped': stats['skipped'],
+                    'Efficiency (%)': efficiency
+                })
+            hour_df = pd.DataFrame(hour_data)
+
+            # Visit Reason Analysis
+            reason_data = []
+            for reason, stats in reason_stats.items():
+                reason_data.append({
+                    'Visit Reason': reason,
+                    'Total': stats['count'],
+                    'Served': stats['served'],
+                    'Skipped': stats['skipped'],
+                    'Pending': stats['pending'],
+                    'Recalls': stats['total_recalls'],
+                    'Skips': stats['total_skips'],
+                    'Avg. Wait (min)': round(stats['avg_waiting_time'], 1),
+                    'Avg. Service (min)': round(stats['avg_service_duration'], 1)
+                })
+            reason_df = pd.DataFrame(reason_data)
+
+            # Staff Performance
+            staff_data = []
+            for staff in staff_members:
+                staff_data.append({
+                    'Staff ID': staff.employee_id,
+                    'Name': staff.name,
+                    'Role': staff.role,
+                    'Tokens Served': staff.tokens_served,
+                    'Avg. Service Time (min)': round(staff.avg_service_time, 1),
+                    'Status': 'On Duty' if staff.is_on_duty else 'Off Duty',
+                    'Last Login': staff.last_login
+                })
+            staff_df = pd.DataFrame(staff_data)
+
+            # Write all DataFrames to Excel file
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                tokens_df.to_excel(writer, sheet_name='Tokens', index=False)
+                summary_df.to_excel(writer, sheet_name='Summary', index=False)
+                day_df.to_excel(writer, sheet_name='Day Analysis', index=False)
+                hour_df.to_excel(writer, sheet_name='Hour Analysis', index=False)
+                reason_df.to_excel(writer, sheet_name='Reason Analysis', index=False)
+                staff_df.to_excel(writer, sheet_name='Staff Performance', index=False)
+
+                # Format the Excel file
+                workbook = writer.book
+
+                # Add some formatting to make it look better
+                header_format = workbook.add_format({
+                    'bold': True,
+                    'text_wrap': True,
+                    'valign': 'top',
+                    'fg_color': '#D7E4BC',
+                    'border': 1
+                })
+
+                # Apply formatting to each worksheet
+                for sheet_name in writer.sheets:
+                    worksheet = writer.sheets[sheet_name]
+                    # Get the column names from the DataFrame
+                    if sheet_name == 'Tokens':
+                        columns = tokens_df.columns
+                    elif sheet_name == 'Summary':
+                        columns = summary_df.columns
+                    elif sheet_name == 'Day Analysis':
+                        columns = day_df.columns
+                    elif sheet_name == 'Hour Analysis':
+                        columns = hour_df.columns
+                    elif sheet_name == 'Reason Analysis':
+                        columns = reason_df.columns
+                    elif sheet_name == 'Staff Performance':
+                        columns = staff_df.columns
+                    else:
+                        continue
+
+                    # Apply header formatting
+                    for col_num, value in enumerate(columns):
+                        worksheet.write(0, col_num, value, header_format)
+
+                    # Set column width
+                    worksheet.set_column(0, len(columns), 15)
+
+            output.seek(0)
+            return send_file(output,
+                            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            download_name='qms_analytics_export.xlsx',
+                            as_attachment=True)
+        else:  # Default to CSV - just export token data
+            output = io.StringIO()
+            tokens_df.to_csv(output, index=False)
+            output.seek(0)
+            return send_file(io.BytesIO(output.getvalue().encode('utf-8')),
+                            mimetype='text/csv',
+                            download_name='tokens_export.csv',
+                            as_attachment=True)
+    except Exception as e:
+        flash(f'Error exporting data: {str(e)}', 'error')
+        if is_admin():
+            return redirect(url_for('admin'))
+        else:
+            return redirect(url_for('employee_dashboard'))
 
 # New admin token generation routes
 # Update the admin_generate_token route in app.py

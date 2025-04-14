@@ -25,6 +25,22 @@
                     {% endif %}
                 </span>
             </div>
+            
+            <!-- New section for skipped tokens -->
+            <div class="skipped-tokens mt-3">
+                <div class="skipped-tokens-header">
+                    <span class="badge bg-warning text-dark">SKIPPED</span>
+                </div>
+                <div class="skipped-tokens-list" id="skippedTokensList">
+                    {% if skipped_tokens %}
+                        {% for token in skipped_tokens %}
+                            <span class="skipped-token-item">{{ token.token_number }}</span>{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-muted">None</span>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         {% if settings.queue_active %}
@@ -67,4 +83,26 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Styling for the skipped tokens section */
+    .skipped-tokens {
+        background-color: #fff8e6;
+        border-radius: 8px;
+        padding: 10px 15px;
+        margin-top: 15px;
+        border: 1px solid #ffe0b2;
+    }
+    
+    .skipped-tokens-header {
+        margin-bottom: 8px;
+    }
+    
+    .skipped-token-item {
+        font-weight: 500;
+        color: #fd7e14;
+    }
+</style>
 {% endblock %}

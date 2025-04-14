@@ -212,6 +212,7 @@
         });
 
         // Function to update the queue display
+        // Function to update the queue display - update to handle skipped tokens
         function updateQueueDisplay(data) {
             let hasChanged = false;
             let notificationMessage = '';
@@ -264,6 +265,39 @@
                         hasChanged = true;
                     }
                     nextTokenElement.textContent = '---';
+                }
+            }
+            
+            // Update skipped tokens list if it exists
+            const skippedTokensListElement = document.getElementById('skippedTokensList');
+            if (skippedTokensListElement && data.skipped_tokens) {
+                // Check if there was any change in skipped tokens
+                const currentSkippedTokensHtml = skippedTokensListElement.innerHTML;
+                let newSkippedTokensHtml = '';
+                
+                if (data.skipped_tokens.length > 0) {
+                    for (let i = 0; i < data.skipped_tokens.length; i++) {
+                        newSkippedTokensHtml += `<span class="skipped-token-item">${data.skipped_tokens[i].token_number}</span>`;
+                        if (i < data.skipped_tokens.length - 1) {
+                            newSkippedTokensHtml += ', ';
+                        }
+                    }
+                } else {
+                    newSkippedTokensHtml = '<span class="text-muted">None</span>';
+                }
+                
+                if (currentSkippedTokensHtml !== newSkippedTokensHtml) {
+                    skippedTokensListElement.innerHTML = newSkippedTokensHtml;
+                    // If a token was just skipped, we should notify
+                    if (data.skipped_tokens.length > 0 && !notificationMessage) {
+                        // Check if the first skipped token is recent (within the last 10 seconds)
+                        const skippedAt = new Date(data.skipped_tokens[0].skipped_at);
+                        const now = new Date();
+                        if ((now - skippedAt) / 1000 < 10) {
+                            hasChanged = true;
+                            notificationMessage = `Token ${data.skipped_tokens[0].token_number} has been skipped`;
+                        }
+                    }
                 }
             }
 

@@ -20,6 +20,9 @@
                     <a href="{{ url_for('user_guide') }}" class="btn btn-outline-info btn-sm me-2" title="User Guide">
                         <i class="bi bi-question-circle me-1"></i>Help
                     </a>
+                    <button type="button" class="btn btn-outline-warning btn-sm me-2" onclick="playAlertSound()" title="Test Alert Sound">
+                        <i class="bi bi-volume-up me-1"></i>Test Sound
+                    </button>
                     <a href="{{ url_for('employee_logout') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-box-arrow-right me-1"></i>Logout
                     </a>
@@ -355,6 +358,75 @@ document.addEventListener('DOMContentLoaded', function() {
             trigger: 'hover'
         });
     });
+
+    // Override the Socket.IO queue_status event handler to ensure notification sounds play
+    socket.on('queue_status', function(data) {
+        console.log('Employee dashboard received queue status update:', data);
+
+        // Get the current state before updating
+        const currentTokenElement = document.querySelector('.current-token');
+        const currentTokenText = currentTokenElement ? currentTokenElement.textContent.trim() : '---';
+
+        const nextTokenElement = document.querySelector('.next-token span');
+        const nextTokenText = nextTokenElement ? nextTokenElement.textContent.trim() : '---';
+
+        // Call the base updateQueueDisplay function
+        updateQueueDisplay(data);
+
+        // Check if the current token has changed
+        if (currentTokenElement) {
+            const newTokenText = data.current_token ? data.current_token.token_number : '---';
+
+            if (currentTokenText !== newTokenText) {
+                // Play notification sound for token changes
+                playNotificationSound();
+
+                // Show a notification
+                const message = data.current_token ?
+                    `Now serving: ${data.current_token.token_number}` :
+                    'No active token';
+
+                const notification = document.getElementById('tokenUpdateNotification');
+                if (notification) {
+                    notification.textContent = message;
+                    notification.classList.add('show');
+
+                    // Hide notification after 5 seconds
+                    setTimeout(() => {
+                        notification.classList.remove('show');
+                    }, 5000);
+                }
+            }
+        }
+
+        // Check if the next token has changed
+        if (nextTokenElement) {
+            const newNextTokenText = data.next_token ? data.next_token.token_number : '---';
+
+            // If a new token was added to the queue (from no tokens to having a token)
+            if (nextTokenText === '---' && newNextTokenText !== '---') {
+                // Play notification sound for new token in queue
+                playNotificationSound();
+
+                // Show a notification
+                const notification = document.getElementById('tokenUpdateNotification');
+                if (notification) {
+                    notification.textContent = `New token in queue: ${newNextTokenText}`;
+                    notification.classList.add('show');
+
+                    // Hide notification after 5 seconds
+                    setTimeout(() => {
+                        notification.classList.remove('show');
+                    }, 5000);
+                }
+            }
+        }
+    });
+
+    // Add a direct function to play notification sound
+    window.playAlertSound = function() {
+        playNotificationSound();
+    };
 });
 </script>
 {% endblock %}

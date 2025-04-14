@@ -46,7 +46,7 @@ A comprehensive web-based Queue Management System designed to streamline custome
 
 1. Clone the repository:
    ```
-   git clone <repository-url>
+   git clone https://github.com/amlanacharya/QMS_aeon
    cd QMS_aeon
    ```
 

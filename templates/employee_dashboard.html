@@ -117,6 +117,11 @@
                            {% if not current_token %}disabled{% endif %}>
                             <i class="bi bi-skip-forward me-1"></i> Skip
                         </a>
+                        <a href="{{ url_for('mark_as_served') }}" class="btn btn-success"
+                           onclick="return confirm('Mark this token as served?')"
+                           {% if not current_token %}disabled{% endif %}>
+                            <i class="bi bi-check-circle me-1"></i> Mark as Served
+                        </a>
                     </div>
                 </div>
             </div>
@@ -324,5 +329,32 @@ function toggleCustomReason() {
         customReasonInput.required = false;
     }
 }
+
+// Add visual feedback to action buttons
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click handlers to all action buttons
+    const actionButtons = document.querySelectorAll('.card-body a.btn, .card-body button.btn');
+
+    actionButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            // Don't add animation to buttons with confirmation dialogs
+            if (this.getAttribute('onclick') && this.getAttribute('onclick').includes('confirm')) {
+                return; // Let the confirmation dialog handle it
+            }
+
+            // Add visual feedback
+            showActionSuccess(this);
+        });
+    });
+
+    // Initialize Bootstrap tooltips for buttons with title attributes
+    const tooltipTriggerList = document.querySelectorAll('[title]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            placement: 'top',
+            trigger: 'hover'
+        });
+    });
+});
 </script>
 {% endblock %}

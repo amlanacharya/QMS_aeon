@@ -446,6 +446,64 @@ def skip_token():
     else:
         return redirect(url_for('employee_dashboard'))
 
+@app.route('/mark-as-served')
+def mark_as_served():
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    current_token = get_current_token()
+    if current_token:
+        # Mark the current token as SERVED
+        current_token.status = 'SERVED'
+        current_token.served_at = get_ist_time()
+
+        # Record which employee served this token
+        if 'employee_id' in session:
+            employee_id = session['employee_id']
+            current_token.staff_id = str(employee_id)
+
+            # Update employee statistics
+            employee = Employee.query.get(employee_id)
+            if employee:
+                employee.tokens_served += 1
+
+                # Update average service time
+                if current_token.created_at:
+                    # Calculate service duration in seconds
+                    if current_token.created_at.tzinfo is None:
+                        served_at_naive = current_token.served_at.replace(tzinfo=None)
+                        delta = served_at_naive - current_token.created_at
+                    else:
+                        delta = current_token.served_at - current_token.created_at
+
+                    current_token.service_duration = int(delta.total_seconds())
+
+                    if employee.tokens_served == 1:
+                        employee.avg_service_time = current_token.service_duration / 60  # Convert to minutes
+                    else:
+                        # Weighted average to smooth out the values
+                        employee.avg_service_time = (employee.avg_service_time * (employee.tokens_served - 1) +
+                                                 current_token.service_duration / 60) / employee.tokens_served
+
+        # Clear the current token
+        settings = get_settings()
+        settings.current_token_id = 0
+        db.session.commit()
+
+        # Broadcast token update to all connected clients
+        broadcast_token_update()
+
+        flash(f'Token {current_token.token_number} has been marked as served', 'success')
+    else:
+        flash('No active token to mark as served', 'error')
+
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
+
 # Admin routes
 @app.route('/admin')
 def admin():

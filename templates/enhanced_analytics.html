@@ -288,7 +288,84 @@
             </div>
         </div>
     </div>
-
+    <!-- Recovery Metrics Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Skipped Token Recovery Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card border-info h-100">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">Total Skipped</h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h3>{{ total_skipped }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-success h-100">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">Skipped but Later Served</h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h3>{{ total_recovered }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-primary h-100">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">Recovery Rate</h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h3>{{ recovery_rate|round(1) }}%</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if skipped_then_served %}
+                    <div class="table-responsive mt-4">
+                        <h6>Recovered Tokens Detail</h6>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Customer</th>
+                                    <th>Created</th>
+                                    <th>Times Skipped</th>
+                                    <th>Served At</th>
+                                    <th>Total Wait (min)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for token in skipped_then_served %}
+                                <tr>
+                                    <td>{{ token.token_number }}</td>
+                                    <td>{{ token.customer_name }}</td>
+                                    <td>{{ token.created_at.strftime('%H:%M:%S') }}</td>
+                                    <td>{{ token.skip_count }}</td>
+                                    <td>{{ token.served_at.strftime('%H:%M:%S') }}</td>
+                                    <td>{{ token.waiting_time }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mt-4">
+                        <i class="bi bi-info-circle me-2"></i>No skipped tokens have been recovered yet.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Data Export Section -->
     <div class="row mb-4">
         <div class="col-12">

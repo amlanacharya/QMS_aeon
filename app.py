@@ -30,7 +30,10 @@ def handle_connect():
     current_token = get_current_token()
     next_token = get_next_token()
     settings = get_settings()
-
+    
+    # Get recently skipped tokens
+    skipped_tokens = Token.query.filter_by(status='SKIPPED').order_by(Token.last_skipped_at.desc()).limit(10).all()
+    
     # Convert token objects to dictionaries for JSON serialization
     current_token_data = None
     if current_token:
@@ -46,11 +49,19 @@ def handle_connect():
         next_token_data = {
             'token_number': next_token.token_number
         }
+        
+    skipped_tokens_data = []
+    for token in skipped_tokens:
+        skipped_tokens_data.append({
+            'token_number': token.token_number,
+            'skipped_at': token.last_skipped_at.strftime('%H:%M:%S') if token.last_skipped_at else None
+        })
 
     emit('queue_status', {
         'current_token': current_token_data,
         'next_token': next_token_data,
-        'queue_active': settings.queue_active
+        'queue_active': settings.queue_active,
+        'skipped_tokens': skipped_tokens_data
     })
 
 @socketio.on('disconnect')
@@ -62,6 +73,9 @@ def broadcast_token_update():
     current_token = get_current_token()
     next_token = get_next_token()
     settings = get_settings()
+    
+    # Get recently skipped tokens
+    skipped_tokens = Token.query.filter_by(status='SKIPPED').order_by(Token.last_skipped_at.desc()).limit(10).all()
 
     # Convert token objects to dictionaries for JSON serialization
     current_token_data = None
@@ -78,11 +92,19 @@ def broadcast_token_update():
         next_token_data = {
             'token_number': next_token.token_number
         }
+        
+    skipped_tokens_data = []
+    for token in skipped_tokens:
+        skipped_tokens_data.append({
+            'token_number': token.token_number,
+            'skipped_at': token.last_skipped_at.strftime('%H:%M:%S') if token.last_skipped_at else None
+        })
 
     socketio.emit('queue_status', {
         'current_token': current_token_data,
         'next_token': next_token_data,
-        'queue_active': settings.queue_active
+        'queue_active': settings.queue_active,
+        'skipped_tokens': skipped_tokens_data
     })
 
 # Custom context processors
@@ -125,6 +147,9 @@ class Token(db.Model):
     staff_id = db.Column(db.String(50), nullable=True)  # ID of staff who served the token
     complexity_level = db.Column(db.Integer, nullable=True)  # 1-5 rating of case complexity
     customer_feedback = db.Column(db.Integer, nullable=True)  # 1-5 rating from customer
+    recovery_time = db.Column(db.Integer, nullable=True)
+    previous_status = db.Column(db.String(20), nullable=True)
+
 
     @property
     def waiting_time(self):
@@ -288,10 +313,13 @@ def index():
     settings = get_settings()
     current_token = get_current_token()
     next_token = get_next_token()
+    skipped_tokens = Token.query.filter_by(status='SKIPPED').order_by(Token.last_skipped_at.desc()).limit(10).all()
+    
     return render_template('index.html',
                           settings=settings,
                           current_token=current_token,
-                          next_token=next_token)
+                          next_token=next_token,
+                          skipped_tokens=skipped_tokens)
 
 @app.route('/generate-token', methods=['POST'])
 def generate_token():
@@ -405,46 +433,7 @@ def recall_token():
     else:
         return redirect(url_for('employee_dashboard'))
 
-@app.route('/skip-token')
-def skip_token():
-    if not is_admin() and 'employee_id' not in session:
-        flash('Access denied', 'error')
-        return redirect(url_for('index'))
 
-    current_token = get_current_token()
-    if current_token:
-        # Mark the current token as SKIPPED
-        current_token.status = 'SKIPPED'
-
-        # Increment skip count and record skip time
-        current_token.skip_count += 1
-        current_token.last_skipped_at = get_ist_time()
-
-        # Find the next token to serve
-        next_token = get_next_token()
-
-        # Clear the current token
-        settings = get_settings()
-        settings.current_token_id = 0
-        db.session.commit()
-
-        # If there's a next token available, set it as the current token
-        if next_token:
-            settings.current_token_id = next_token.id
-            db.session.commit()
-
-        # Broadcast token update to all connected clients
-        broadcast_token_update()
-
-        flash(f'Token {current_token.token_number} has been skipped', 'warning')
-    else:
-        flash('No active token to skip', 'error')
-
-    # Redirect based on user type
-    if is_admin():
-        return redirect(url_for('admin'))
-    else:
-        return redirect(url_for('employee_dashboard'))
 
 @app.route('/mark-as-served')
 def mark_as_served():
@@ -594,8 +583,35 @@ def export_data():
                 'Customer Name': token.customer_name,
                 'Status': token.status,
                 'Created At': token.created_at,
-                'Recall Count': token.recall_count
+                'Recall Count': token.recall_count,
+                'Skip Count': token.skip_count,  # Make sure this is included
+                'Was Skipped': token.skip_count > 0,  # Add a boolean for easier filtering
             }
+
+            # Add skipped token specific data
+            if token.skip_count > 0:
+                token_item['Last Skipped At'] = token.last_skipped_at
+                # Include recovery time if the token was skipped but later served
+                if token.status == 'SERVED' and token.served_at and token.last_skipped_at:
+                    # Calculate recovery time if not stored directly
+                    if hasattr(token, 'recovery_time') and token.recovery_time:
+                        token_item['Recovery Time (sec)'] = token.recovery_time
+                    else:
+                        # Calculate on the fly if not stored
+                        if token.last_skipped_at.tzinfo is None and token.served_at.tzinfo is not None:
+                            # last_skipped_at is naive, served_at is aware
+                            served_at_naive = token.served_at.replace(tzinfo=None)
+                            recovery_delta = served_at_naive - token.last_skipped_at
+                        elif token.last_skipped_at.tzinfo is not None and token.served_at.tzinfo is None:
+                            # last_skipped_at is aware, served_at is naive
+                            last_skipped_at_naive = token.last_skipped_at.replace(tzinfo=None)
+                            recovery_delta = token.served_at - last_skipped_at_naive
+                        else:
+                            # Both are either naive or aware
+                            recovery_delta = token.served_at - token.last_skipped_at
+                        
+                        token_item['Recovery Time (sec)'] = int(recovery_delta.total_seconds())
+                        token_item['Recovery Time (min)'] = round(int(recovery_delta.total_seconds()) / 60, 1)
 
             # Add service time data if available
             if token.served_at:
@@ -622,6 +638,9 @@ def export_data():
             skipped_tokens = [t for t in all_tokens if t.status == 'SKIPPED' or t.skip_count > 0]
             pending_tokens = [t for t in all_tokens if t.status == 'PENDING']
 
+            # Get tokens that were skipped but later served (recovered tokens)
+            skipped_then_served = [t for t in served_tokens if t.skip_count > 0]
+
             # Get all employees
             staff_members = Employee.query.all()
 
@@ -630,6 +649,10 @@ def export_data():
             total_served = len(served_tokens)
             total_skipped = len(skipped_tokens)
             total_pending = len(pending_tokens)
+            total_recovered = len(skipped_then_served)
+
+            # Calculate recovery rate
+            recovery_rate = (total_recovered / total_skipped * 100) if total_skipped > 0 else 0
 
             # Calculate service metrics
             if total_served > 0:
@@ -651,22 +674,26 @@ def export_data():
                 # Day of week stats
                 day = token.day_of_week
                 if day not in day_stats:
-                    day_stats[day] = {'count': 0, 'served': 0, 'skipped': 0}
+                    day_stats[day] = {'count': 0, 'served': 0, 'skipped': 0, 'recovered': 0}
 
                 day_stats[day]['count'] += 1
                 if token.status == 'SERVED':
                     day_stats[day]['served'] += 1
+                    if token.skip_count > 0:
+                        day_stats[day]['recovered'] += 1
                 elif token.status == 'SKIPPED' or token.skip_count > 0:
                     day_stats[day]['skipped'] += 1
 
                 # Hour of day stats
                 hour = token.hour_of_day
                 if hour not in hour_stats:
-                    hour_stats[hour] = {'count': 0, 'served': 0, 'skipped': 0}
+                    hour_stats[hour] = {'count': 0, 'served': 0, 'skipped': 0, 'recovered': 0}
 
                 hour_stats[hour]['count'] += 1
                 if token.status == 'SERVED':
                     hour_stats[hour]['served'] += 1
+                    if token.skip_count > 0:
+                        hour_stats[hour]['recovered'] += 1
                 elif token.status == 'SKIPPED' or token.skip_count > 0:
                     hour_stats[hour]['skipped'] += 1
 
@@ -680,6 +707,7 @@ def export_data():
                         'served': 0,
                         'skipped': 0,
                         'pending': 0,
+                        'recovered': 0,
                         'total_waiting_time': 0,
                         'total_service_duration': 0,
                         'total_recalls': 0,
@@ -692,6 +720,8 @@ def export_data():
 
                 if token.status == 'SERVED':
                     reason_stats[reason]['served'] += 1
+                    if token.skip_count > 0:
+                        reason_stats[reason]['recovered'] += 1
                     reason_stats[reason]['total_waiting_time'] += token.waiting_time or 0
                     reason_stats[reason]['total_service_duration'] += token.service_duration or 0 if token.service_duration else 0
                 elif token.status == 'SKIPPED' or token.skip_count > 0:
@@ -715,12 +745,12 @@ def export_data():
                 'Metric': [
                     'Total Tokens', 'Tokens Served', 'Tokens Skipped', 'Tokens Pending',
                     'Average Waiting Time (min)', 'Average Service Duration (min)',
-                    'Total Recalls', 'Total Skips'
+                    'Total Recalls', 'Total Skips', 'Skipped Tokens Recovered', 'Recovery Rate (%)'
                 ],
                 'Value': [
                     total_tokens, total_served, total_skipped, total_pending,
                     round(avg_waiting_time, 1), round(avg_service_duration, 1),
-                    total_recalls, total_skips
+                    total_recalls, total_skips, total_recovered, round(recovery_rate, 1)
                 ]
             }
             summary_df = pd.DataFrame(summary_data)
@@ -729,12 +759,15 @@ def export_data():
             day_data = []
             for day, stats in day_stats.items():
                 efficiency = round((stats['served'] / stats['count'] * 100), 1) if stats['count'] > 0 else 0
+                recovery_rate = round((stats['recovered'] / stats['skipped'] * 100), 1) if stats['skipped'] > 0 else 0
                 day_data.append({
                     'Day': day,
                     'Total': stats['count'],
                     'Served': stats['served'],
                     'Skipped': stats['skipped'],
-                    'Efficiency (%)': efficiency
+                    'Recovered': stats['recovered'],
+                    'Efficiency (%)': efficiency,
+                    'Recovery Rate (%)': recovery_rate
                 })
             day_df = pd.DataFrame(day_data)
 
@@ -742,28 +775,34 @@ def export_data():
             hour_data = []
             for hour, stats in hour_stats.items():
                 efficiency = round((stats['served'] / stats['count'] * 100), 1) if stats['count'] > 0 else 0
+                recovery_rate = round((stats['recovered'] / stats['skipped'] * 100), 1) if stats['skipped'] > 0 else 0
                 hour_data.append({
                     'Hour': f"{hour}:00",
                     'Total': stats['count'],
                     'Served': stats['served'],
                     'Skipped': stats['skipped'],
-                    'Efficiency (%)': efficiency
+                    'Recovered': stats['recovered'],
+                    'Efficiency (%)': efficiency,
+                    'Recovery Rate (%)': recovery_rate
                 })
             hour_df = pd.DataFrame(hour_data)
 
             # Visit Reason Analysis
             reason_data = []
             for reason, stats in reason_stats.items():
+                recovery_rate = round((stats['recovered'] / stats['skipped'] * 100), 1) if stats['skipped'] > 0 else 0
                 reason_data.append({
                     'Visit Reason': reason,
                     'Total': stats['count'],
                     'Served': stats['served'],
                     'Skipped': stats['skipped'],
+                    'Recovered': stats['recovered'],
                     'Pending': stats['pending'],
                     'Recalls': stats['total_recalls'],
                     'Skips': stats['total_skips'],
                     'Avg. Wait (min)': round(stats['avg_waiting_time'], 1),
-                    'Avg. Service (min)': round(stats['avg_service_duration'], 1)
+                    'Avg. Service (min)': round(stats['avg_service_duration'], 1),
+                    'Recovery Rate (%)': recovery_rate
                 })
             reason_df = pd.DataFrame(reason_data)
 
@@ -781,6 +820,40 @@ def export_data():
                 })
             staff_df = pd.DataFrame(staff_data)
 
+            # Recovery Analysis - New sheet for recovered tokens
+            recovery_data = []
+            for token in skipped_then_served:
+                # Calculate recovery time if not stored directly
+                recovery_time = None
+                if hasattr(token, 'recovery_time') and token.recovery_time:
+                    recovery_time = token.recovery_time
+                elif token.last_skipped_at and token.served_at:
+                    # Calculate on the fly
+                    if token.last_skipped_at.tzinfo is None and token.served_at.tzinfo is not None:
+                        served_at_naive = token.served_at.replace(tzinfo=None)
+                        recovery_delta = served_at_naive - token.last_skipped_at
+                    elif token.last_skipped_at.tzinfo is not None and token.served_at.tzinfo is None:
+                        last_skipped_at_naive = token.last_skipped_at.replace(tzinfo=None)
+                        recovery_delta = token.served_at - last_skipped_at_naive
+                    else:
+                        recovery_delta = token.served_at - token.last_skipped_at
+                    recovery_time = int(recovery_delta.total_seconds())
+                
+                recovery_data.append({
+                    'Token Number': token.token_number,
+                    'Customer Name': token.customer_name,
+                    'Visit Reason': token.visit_reason,
+                    'Created At': token.created_at,
+                    'Times Skipped': token.skip_count,
+                    'Last Skipped At': token.last_skipped_at,
+                    'Served At': token.served_at,
+                    'Recovery Time (sec)': recovery_time,
+                    'Recovery Time (min)': round(recovery_time / 60, 1) if recovery_time else None,
+                    'Total Wait Time (min)': token.waiting_time,
+                    'Staff ID': token.staff_id
+                })
+            recovery_df = pd.DataFrame(recovery_data)
+
             # Write all DataFrames to Excel file
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 tokens_df.to_excel(writer, sheet_name='Tokens', index=False)
@@ -789,6 +862,7 @@ def export_data():
                 hour_df.to_excel(writer, sheet_name='Hour Analysis', index=False)
                 reason_df.to_excel(writer, sheet_name='Reason Analysis', index=False)
                 staff_df.to_excel(writer, sheet_name='Staff Performance', index=False)
+                recovery_df.to_excel(writer, sheet_name='Recovery Analysis', index=False)  # New sheet
 
                 # Format the Excel file
                 workbook = writer.book
@@ -818,6 +892,8 @@ def export_data():
                         columns = reason_df.columns
                     elif sheet_name == 'Staff Performance':
                         columns = staff_df.columns
+                    elif sheet_name == 'Recovery Analysis':
+                        columns = recovery_df.columns
                     else:
                         continue
 
@@ -1245,6 +1321,16 @@ def enhanced_analytics():
     total_served = len(served_tokens)
     total_skipped = len(skipped_tokens)
     total_pending = len(pending_tokens)
+    # Get tokens that were skipped but later served
+    skipped_then_served = []
+    for token in served_tokens:
+        if token.skip_count > 0:
+            skipped_then_served.append(token)
+    # Calculate recovery metrics
+    total_recovered = len(skipped_then_served)
+    recovery_rate = (total_recovered / total_skipped * 100) if total_skipped > 0 else 0
+    # Calculate average recovery time
+    avg_recovery_time = sum(token.recovery_time or 0 for token in skipped_then_served) / total_recovered if total_recovered > 0 else 0
 
     # Calculate service metrics
     if total_served > 0:
@@ -1340,7 +1426,10 @@ def enhanced_analytics():
                           hour_stats=hour_stats,
                           reason_stats=reason_stats,
                           all_tokens=all_tokens,
-                          staff_members=staff_members)
+                          staff_members=staff_members,
+                          skipped_then_served=skipped_then_served,
+                        total_recovered=total_recovered,
+                        recovery_rate=recovery_rate)
 
 # Employee Management Routes
 @app.route('/manage-employees')
@@ -1552,7 +1641,6 @@ def end_duty():
     flash(f'{employee.name} is now off duty', 'info')
     return redirect(url_for('employee_dashboard'))
 
-# Update serve_token route to track employee
 @app.route('/serve-token/<int:token_id>')
 def serve_token(token_id):
     if not is_admin() and 'employee_id' not in session:
@@ -1561,16 +1649,31 @@ def serve_token(token_id):
 
     token = Token.query.get_or_404(token_id)
 
-    # Only pending tokens can be served
-    if token.status != 'PENDING':
-        flash(f'Only pending tokens can be served. Token {token.token_number} is {token.status}', 'error')
+    # Only pending or skipped tokens can be served
+    if token.status != 'PENDING' and token.status != 'SKIPPED':
+        flash(f'Only pending or skipped tokens can be served. Token {token.token_number} is {token.status}', 'error')
         if is_admin():
             return redirect(url_for('admin'))
         else:
             return redirect(url_for('employee_dashboard'))
 
-    # No need to check if token is out of order anymore
-    # Our improved get_next_token() function handles all cases
+    # Special handling for previously skipped tokens
+    recovery_time = None
+    if token.status == 'SKIPPED':
+        # Calculate recovery time (time between skipping and serving)
+        if token.last_skipped_at:
+            recovery_time = int((get_ist_time() - token.last_skipped_at).total_seconds())
+            token.recovery_time = recovery_time            
+        status_change = TokenStatusChange(
+             token_id=token.id,
+             old_status='SKIPPED',
+             new_status='SERVED',
+             changed_by=session.get('employee_id')
+         )
+        db.session.add(status_change)
+        
+        # Add a note about this being a previously skipped token
+        flash(f'Serving previously skipped token {token.token_number}. Token was skipped {token.skip_count} times.', 'info')
 
     # If there's a current token, mark it as served
     settings = get_settings()
@@ -1652,6 +1755,53 @@ def user_guide():
             return redirect(url_for('admin'))
         else:
             return redirect(url_for('employee_dashboard'))
+@app.route('/skip-token')
+def skip_token():
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    current_token = get_current_token()
+    if current_token:
+        # Mark the current token as SKIPPED
+        current_token.status = 'SKIPPED'
+
+        # Increment skip count and record skip time
+        current_token.skip_count += 1
+        current_token.last_skipped_at = get_ist_time()
+        
+        # Record which employee skipped this token
+        if 'employee_id' in session:
+            employee_id = session['employee_id']
+            # We'll reuse the staff_id field to track who performed the action
+            if not current_token.staff_id:  # Only set if not already set
+                current_token.staff_id = str(employee_id)
+
+        # Find the next token to serve
+        next_token = get_next_token()
+
+        # Clear the current token
+        settings = get_settings()
+        settings.current_token_id = 0
+        db.session.commit()
+
+        # If there's a next token available, set it as the current token
+        if next_token:
+            settings.current_token_id = next_token.id
+            db.session.commit()
+
+        # Broadcast token update to all connected clients
+        broadcast_token_update()
+
+        flash(f'Token {current_token.token_number} has been skipped', 'warning')
+    else:
+        flash('No active token to skip', 'error')
+
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

@@ -184,7 +184,7 @@
             <p>Token Queue Management System &copy; {{ now() }}</p>
             <!-- Add this to the base.html file in the footer section, just before the closing footer tag -->
 
-            {% if settings and settings.use_thermal_printer %}
+            {% if settings and settings.use_thermal_printer and (session.is_admin or session.employee_id) %}
             <div class="text-center mt-2">
                 <a href="{{ url_for('thermal_print_help') }}" class="text-muted small">
                     <i class="bi bi-printer me-1"></i>Thermal Printer Setup Guide

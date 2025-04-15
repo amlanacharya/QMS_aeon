@@ -19,43 +19,19 @@
                         <h5 class="mb-0">Print Token</h5>
                     </div>
                     <div class="card-body">
-                        {% if settings.use_thermal_printer %}
-                        <!-- Thermal Print Option Only -->
                         <div class="text-center">
-                            <div class="card border-success mx-auto" style="max-width: 400px;">
-                                <div class="card-body">
-                                    <h6>Thermal Printer</h6>
-                                    <p class="small text-muted">Print directly to a receipt printer via Android app</p>
-                                    <div class="d-grid">
-                                        <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-success btn-lg">
-                                            <i class="bi bi-receipt"></i> Print Token
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="mt-3">
-                                <a href="{{ url_for('thermal_print_help') }}" class="text-info small">
-                                    <i class="bi bi-question-circle"></i> How to set up thermal printing
+                            <div class="d-grid">
+                                {% if settings.use_thermal_printer %}
+                                <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-success btn-lg">
+                                    <i class="bi bi-receipt"></i> Print Token
                                 </a>
+                                {% else %}
+                                <a href="{{ url_for('print_token', token_id=token.id) }}" class="btn btn-primary btn-lg" target="_blank">
+                                    <i class="bi bi-printer"></i> Print Token
+                                </a>
+                                {% endif %}
                             </div>
                         </div>
-                        {% else %}
-                        <!-- Standard Print Option Only -->
-                        <div class="text-center">
-                            <div class="card border-primary mx-auto" style="max-width: 400px;">
-                                <div class="card-body">
-                                    <h6>Standard Printer</h6>
-                                    <p class="small text-muted">Use your computer or phone's built-in printing system</p>
-                                    <div class="d-grid">
-                                        <a href="{{ url_for('print_token', token_id=token.id) }}" class="btn btn-primary btn-lg" target="_blank">
-                                            <i class="bi bi-printer"></i> Print Token
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
 

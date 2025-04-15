@@ -197,7 +197,7 @@
         </div>
     </div>
 
-    <!-- Pending Tokens and History -->
+    <!-- Pending Tokens, Skipped Tokens, and History -->
     <div class="row">
         <div class="col-md-6">
             <div class="card border-warning mb-4">
@@ -252,6 +252,65 @@
                                     <td colspan="4" class="text-center py-3">
                                         <div class="alert alert-info mb-0">
                                             <i class="bi bi-info-circle me-2"></i>No pending tokens in queue
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skipped Tokens Section -->
+            <div class="card border-danger mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Skipped Tokens</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Customer</th>
+                                    <th>Skipped At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set skipped_tokens = all_tokens|selectattr('status', 'equalto', 'SKIPPED')|list %}
+                                {% for token in skipped_tokens %}
+                                <tr>
+                                    <td>{{ token.token_number }}</td>
+                                    <td>{{ token.customer_name }}</td>
+                                    <td>{{ token.last_skipped_at.strftime('%H:%M') if token.last_skipped_at else 'N/A' }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('recover_token', token_id=token.id) }}" class="btn btn-warning" title="Recover This Token">
+                                                <i class="bi bi-arrow-return-left"></i> Recover
+                                            </a>
+                                            <a href="{{ url_for('serve_token', token_id=token.id) }}" class="btn btn-success" title="Serve This Token">
+                                                <i class="bi bi-play-fill"></i> Serve
+                                            </a>
+                                            {% if settings.use_thermal_printer %}
+                                            <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-info btn-sm" title="Print with Thermal Printer">
+                                                <i class="bi bi-receipt"></i>
+                                            </a>
+                                            {% else %}
+                                            <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-primary btn-sm" target="_blank" title="Print with Standard Printer">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not skipped_tokens %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="bi bi-info-circle me-2"></i>No skipped tokens
                                         </div>
                                     </td>
                                 </tr>

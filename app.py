@@ -155,7 +155,7 @@ class Token(db.Model):
 
     @property
     def waiting_time(self):
-        """Calculate waiting time in minutes from creation to being served"""
+        """Calculate waiting time in minutes from creation to being served, excluding time spent in SKIPPED state"""
         if not self.served_at:
             return None
 
@@ -172,7 +172,16 @@ class Token(db.Model):
             # Both are either naive or aware
             delta = self.served_at - self.created_at
 
-        return int(delta.total_seconds() / 60)
+        # Calculate total waiting time in seconds
+        total_seconds = delta.total_seconds()
+
+        # Subtract time spent in SKIPPED state if applicable
+        if self.skip_count > 0 and self.recovery_time:
+            # Subtract the recovery time (time between last skip and being served)
+            total_seconds -= self.recovery_time
+
+        # Ensure we don't return negative values
+        return max(0, int(total_seconds / 60))
 
     @property
     def total_service_time(self):
@@ -239,6 +248,16 @@ class Employee(db.Model):
     # Statistics
     tokens_served = db.Column(db.Integer, default=0)
     avg_service_time = db.Column(db.Float, default=0.0)  # in minutes
+
+# Token status change history model
+class TokenStatusChange(db.Model):
+    __tablename__ = 'token_status_changes'
+    id = db.Column(db.Integer, primary_key=True)
+    token_id = db.Column(db.Integer, nullable=False)
+    old_status = db.Column(db.String(20), nullable=False)
+    new_status = db.Column(db.String(20), nullable=False)
+    changed_at = db.Column(db.DateTime, default=get_ist_time)
+    changed_by = db.Column(db.String(50), nullable=True)  # Employee ID who made the change
 
 # Create tables if they don't exist
 with app.app_context():
@@ -1444,7 +1463,8 @@ def enhanced_analytics():
                           staff_members=staff_members,
                           skipped_then_served=skipped_then_served,
                         total_recovered=total_recovered,
-                        recovery_rate=recovery_rate)
+                        recovery_rate=recovery_rate,
+                        avg_recovery_time=avg_recovery_time)
 
 # Employee Management Routes
 @app.route('/manage-employees')
@@ -1611,6 +1631,9 @@ def employee_dashboard():
     next_token = get_next_token()
     pending_tokens = Token.query.filter_by(status='PENDING').order_by(Token.id).all()
 
+    # Get all tokens for filtering in the template
+    all_tokens = Token.query.order_by(Token.id.desc()).limit(50).all()
+
     # Get tokens served by this employee
     served_tokens = Token.query.filter_by(staff_id=str(employee.id), status='SERVED').order_by(Token.served_at.desc()).limit(10).all()
 
@@ -1620,7 +1643,8 @@ def employee_dashboard():
                           current_token=current_token,
                           next_token=next_token,
                           pending_tokens=pending_tokens,
-                          served_tokens=served_tokens)
+                          served_tokens=served_tokens,
+                          all_tokens=all_tokens)
 
 @app.route('/start-duty')
 def start_duty():
@@ -1676,8 +1700,24 @@ def serve_token(token_id):
     if token.status == 'SKIPPED':
         # Calculate recovery time (time between skipping and serving)
         if token.last_skipped_at:
-            recovery_time = int((get_ist_time() - token.last_skipped_at).total_seconds())
+            current_time = get_ist_time()
+
+            # Handle timezone differences
+            if token.last_skipped_at.tzinfo is None and current_time.tzinfo is not None:
+                # last_skipped_at is naive, current_time is aware
+                current_time_naive = current_time.replace(tzinfo=None)
+                recovery_delta = current_time_naive - token.last_skipped_at
+            elif token.last_skipped_at.tzinfo is not None and current_time.tzinfo is None:
+                # last_skipped_at is aware, current_time is naive
+                last_skipped_at_naive = token.last_skipped_at.replace(tzinfo=None)
+                recovery_delta = current_time - last_skipped_at_naive
+            else:
+                # Both are either naive or aware
+                recovery_delta = current_time - token.last_skipped_at
+
+            recovery_time = int(recovery_delta.total_seconds())
             token.recovery_time = recovery_time
+
         status_change = TokenStatusChange(
              token_id=token.id,
              old_status='SKIPPED',
@@ -1757,8 +1797,12 @@ def user_guide():
             content = file.read()
 
         # Convert markdown to HTML
-        import markdown
-        html_content = markdown.markdown(content, extensions=['tables', 'toc'])
+        try:
+            import markdown
+            html_content = markdown.markdown(content, extensions=['tables', 'toc'])
+        except ImportError:
+            # If markdown module is not available, just use the raw content
+            html_content = f'<pre>{content}</pre>'
 
         return render_template('user_guide.html', content=html_content)
     except Exception as e:
@@ -1777,6 +1821,9 @@ def skip_token():
     if current_token:
         # Mark the current token as SKIPPED
         current_token.status = 'SKIPPED'
+
+        # Store the previous status in case we need to recover
+        current_token.previous_status = 'PENDING' if not current_token.previous_status else current_token.status
 
         # Increment skip count and record skip time
         current_token.skip_count += 1
@@ -1808,6 +1855,57 @@ def skip_token():
         flash(f'Token {current_token.token_number} has been skipped', 'warning')
     else:
         flash('No active token to skip', 'error')
+
+    # Redirect based on user type
+    if is_admin():
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('employee_dashboard'))
+
+@app.route('/recover-token/<int:token_id>')
+def recover_token(token_id):
+    if not is_admin() and 'employee_id' not in session:
+        flash('Access denied', 'error')
+        return redirect(url_for('index'))
+
+    token = Token.query.get_or_404(token_id)
+
+    # Only skipped tokens can be recovered
+    if token.status != 'SKIPPED':
+        flash(f'Only skipped tokens can be recovered. Token {token.token_number} is {token.status}', 'error')
+        if is_admin():
+            return redirect(url_for('admin'))
+        else:
+            return redirect(url_for('employee_dashboard'))
+
+    # Calculate recovery time (time between skipping and recovering)
+    if token.last_skipped_at:
+        current_time = get_ist_time()
+
+        # Handle timezone differences
+        if token.last_skipped_at.tzinfo is None and current_time.tzinfo is not None:
+            # last_skipped_at is naive, current_time is aware
+            current_time_naive = current_time.replace(tzinfo=None)
+            recovery_delta = current_time_naive - token.last_skipped_at
+        elif token.last_skipped_at.tzinfo is not None and current_time.tzinfo is None:
+            # last_skipped_at is aware, current_time is naive
+            last_skipped_at_naive = token.last_skipped_at.replace(tzinfo=None)
+            recovery_delta = current_time - last_skipped_at_naive
+        else:
+            # Both are either naive or aware
+            recovery_delta = current_time - token.last_skipped_at
+
+        recovery_time = int(recovery_delta.total_seconds())
+        token.recovery_time = recovery_time
+
+    # Change status back to PENDING
+    token.status = 'PENDING'
+    db.session.commit()
+
+    # Broadcast token update to all connected clients
+    broadcast_token_update()
+
+    flash(f'Token {token.token_number} has been recovered and is now back in the pending queue', 'success')
 
     # Redirect based on user type
     if is_admin():

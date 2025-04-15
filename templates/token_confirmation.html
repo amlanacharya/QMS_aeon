@@ -4,30 +4,38 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <div class="card">
+        <div class="card border-success">
             <div class="card-header bg-success text-white text-center">
-                <h4>Token Generated Successfully!</h4>
+                <h4><i class="bi bi-check-circle me-2"></i>Token Generated Successfully!</h4>
             </div>
             <div class="card-body text-center">
-                <h2>Your Token Number</h2>
-                <div class="display-1 fw-bold text-primary my-3">{{ token.token_number }}</div>
+                <div class="print-token mb-4">
+                    <h2 class="mb-3">Your Token Number</h2>
+                    <div class="print-token-number">{{ token.token_number }}</div>
 
-                <p class="mb-4">Please keep this token number with you. Your token will be called when it's your turn.</p>
+                    <div class="print-token-info">
+                        <p><strong>Name:</strong> {{ token.customer_name }}</p>
+                        <p><strong>Reason:</strong> {{ token.visit_reason }}</p>
+                        <p><strong>Time:</strong> {{ token.created_at.strftime('%H:%M') }}</p>
+                    </div>
+                </div>
 
-                <div class="card mb-4">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0">Print Token</h5>
+                <p class="alert alert-info">Please keep this token number with you. Your token will be called when it's your turn.</p>
+
+                <div class="card border-primary mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-printer me-2"></i>Print Token</h5>
                     </div>
                     <div class="card-body">
                         <div class="text-center">
                             <div class="d-grid">
                                 {% if settings.use_thermal_printer %}
                                 <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-info btn-lg">
-                                    <i class="bi bi-receipt"></i> Print Token
+                                    <i class="bi bi-receipt me-2"></i>Print with Thermal Printer
                                 </a>
                                 {% else %}
                                 <a href="{{ url_for('print_token', token_id=token.id) }}" class="btn btn-primary btn-lg" target="_blank">
-                                    <i class="bi bi-printer"></i> Print Token
+                                    <i class="bi bi-printer me-2"></i>Print Token
                                 </a>
                                 {% endif %}
                             </div>
@@ -36,8 +44,8 @@
                 </div>
 
                 <div class="d-grid">
-                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-house"></i> Back to Home
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-house me-2"></i>Back to Home
                     </a>
                 </div>
             </div>
@@ -47,5 +55,5 @@
 {% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<!-- No need for Bootstrap Icons link as it's already in base.html -->
 {% endblock %}

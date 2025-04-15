@@ -25,7 +25,7 @@
                     {% endif %}
                 </span>
             </div>
-            
+
             <!-- New section for skipped tokens -->
             <div class="skipped-tokens mt-3">
                 <div class="skipped-tokens-header">
@@ -48,7 +48,8 @@
                 <h3 class="text-center mb-4">Get Your Token</h3>
                 <form action="{{ url_for('generate_token') }}" method="post">
                     <div class="mb-3">
-                        <select class="form-control" id="visit_reason" name="visit_reason" required onchange="toggleCustomReason()">
+                        <label for="visit_reason" class="form-label">Visit Reason</label>
+                        <select class="form-select" id="visit_reason" name="visit_reason" required onchange="toggleCustomReason()">
                             <option value="">Select Visit Reason</option>
                             {% for reason in get_active_reasons() %}
                             <option value="{{ reason.code }}">{{ reason.description }}</option>
@@ -57,29 +58,38 @@
                         </select>
                     </div>
                     <div class="mb-3" id="custom_reason_div" style="display: none;">
+                        <label for="custom_reason" class="form-label">Specify Reason</label>
                         <input type="text" class="form-control" name="custom_reason" id="custom_reason" placeholder="Specify your reason">
                     </div>
                     <div class="mb-3">
-                        <input type="tel" class="form-control" name="phone_number" placeholder="Phone No." required>
+                        <label for="phone_number" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone_number" name="phone_number" placeholder="Phone No." required>
                     </div>
                     <div class="mb-3">
-                        <input type="text" class="form-control" name="customer_name" placeholder="Customer Name" required>
+                        <label for="customer_name" class="form-label">Customer Name</label>
+                        <input type="text" class="form-control" id="customer_name" name="customer_name" placeholder="Customer Name" required>
                     </div>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">Generate Token</button>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-ticket-perforated me-2"></i>Generate Token
+                        </button>
                     </div>
                 </form>
             </div>
         {% else %}
             <div class="alert alert-warning text-center">
-                <h4>Queue is currently paused</h4>
+                <h4><i class="bi bi-exclamation-triangle me-2"></i>Queue is currently paused</h4>
                 <p>Token generation is temporarily disabled. Please check back later.</p>
             </div>
         {% endif %}
 
         <div class="text-center mt-4">
-            <a href="{{ url_for('employee_login') }}" class="btn btn-outline-primary btn-sm me-2">Employee Login</a>
-            <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary btn-sm">Admin Login</a>
+            <a href="{{ url_for('employee_login') }}" class="btn btn-outline-primary btn-sm me-2">
+                <i class="bi bi-person-badge me-1"></i>Employee Login
+            </a>
+            <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-shield-lock me-1"></i>Admin Login
+            </a>
         </div>
     </div>
 </div>
@@ -95,11 +105,11 @@
         margin-top: 15px;
         border: 1px solid #ffe0b2;
     }
-    
+
     .skipped-tokens-header {
         margin-bottom: 8px;
     }
-    
+
     .skipped-token-item {
         font-weight: 500;
         color: #fd7e14;

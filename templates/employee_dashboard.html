@@ -81,7 +81,7 @@
                                 </div>
                                 <div class="card-body text-center">
                                     {% if current_token %}
-                                    <h1 class="display-4">{{ current_token.token_number }}</h1>
+                                    <h1 class="display-4 pulse">{{ current_token.token_number }}</h1>
                                     <p>{{ current_token.customer_name }}</p>
                                     <p>{{ current_token.visit_reason }}</p>
                                     {% else %}
@@ -389,6 +389,54 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<style>
+    /* Token animations */
+    @keyframes glow-pulse {
+        0% { text-shadow: 0 0 10px rgba(0, 198, 255, 0.5), 0 0 20px rgba(0, 198, 255, 0.3); }
+        50% { text-shadow: 0 0 15px rgba(0, 198, 255, 0.8), 0 0 30px rgba(0, 198, 255, 0.5), 0 0 40px rgba(0, 198, 255, 0.3); }
+        100% { text-shadow: 0 0 10px rgba(0, 198, 255, 0.5), 0 0 20px rgba(0, 198, 255, 0.3); }
+    }
+
+    .pulse {
+        animation: glow-pulse 2s infinite;
+    }
+
+    /* Grid background for cards */
+    .card {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image:
+            linear-gradient(rgba(0, 166, 251, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 166, 251, 0.03) 1px, transparent 1px);
+        background-size: 20px 20px;
+        z-index: 0;
+    }
+
+    .card > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Employee badge glow effect */
+    .bi-person-badge {
+        color: var(--tron-blue);
+        text-shadow: 0 0 10px rgba(0, 198, 255, 0.5);
+    }
+
+    /* Action button effects */
+    .btn:active {
+        transform: scale(0.95);
+    }
+</style>
 <script>
 function toggleCustomReason() {
     const reasonSelect = document.getElementById('visit_reason');

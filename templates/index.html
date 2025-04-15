@@ -10,7 +10,7 @@
                 <div class="badge bg-success text-white small-badge">LIVE</div>
             </div>
             {% if current_token %}
-                <div class="current-token">{{ current_token.token_number }}</div>
+                <div class="current-token pulse">{{ current_token.token_number }}</div>
             {% else %}
                 <div class="current-token">---</div>
             {% endif %}
@@ -97,22 +97,40 @@
 
 {% block extra_head %}
 <style>
-    /* Styling for the skipped tokens section */
-    .skipped-tokens {
-        background-color: #fff8e6;
-        border-radius: 8px;
-        padding: 10px 15px;
-        margin-top: 15px;
-        border: 1px solid #ffe0b2;
+    /* Token animations */
+    @keyframes glow-pulse {
+        0% { text-shadow: 0 0 10px rgba(0, 198, 255, 0.5), 0 0 20px rgba(0, 198, 255, 0.3); }
+        50% { text-shadow: 0 0 15px rgba(0, 198, 255, 0.8), 0 0 30px rgba(0, 198, 255, 0.5), 0 0 40px rgba(0, 198, 255, 0.3); }
+        100% { text-shadow: 0 0 10px rgba(0, 198, 255, 0.5), 0 0 20px rgba(0, 198, 255, 0.3); }
     }
 
-    .skipped-tokens-header {
-        margin-bottom: 8px;
+    .current-token.pulse {
+        animation: glow-pulse 2s infinite;
     }
 
-    .skipped-token-item {
-        font-weight: 500;
-        color: #fd7e14;
+    /* Grid background for token container */
+    .token-container {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .token-container::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image:
+            linear-gradient(rgba(0, 166, 251, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 166, 251, 0.05) 1px, transparent 1px);
+        background-size: 20px 20px;
+        z-index: 0;
+    }
+
+    .token-container > * {
+        position: relative;
+        z-index: 1;
     }
 </style>
 {% endblock %}

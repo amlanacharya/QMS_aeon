@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .logo-text {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: bold;
+      font-size: 24px;
+      fill: #00c3ff;
+      letter-spacing: 2px;
+    }
+    .logo-glow {
+      filter: drop-shadow(0 0 5px #00a6fb);
+    }
+    .grid-line {
+      stroke: #00a6fb;
+      stroke-width: 1;
+      stroke-opacity: 0.3;
+    }
+    .disc {
+      fill: none;
+      stroke: #00c3ff;
+      stroke-width: 2;
+    }
+    .disc-glow {
+      filter: drop-shadow(0 0 3px #00a6fb);
+    }
+    .inner-circle {
+      fill: #00a6fb;
+      fill-opacity: 0.2;
+    }
+  </style>
+  
+  <!-- Background Grid -->
+  <g class="grid">
+    <line class="grid-line" x1="0" y1="15" x2="200" y2="15" />
+    <line class="grid-line" x1="0" y1="45" x2="200" y2="45" />
+    <line class="grid-line" x1="60" y1="0" x2="60" y2="60" />
+    <line class="grid-line" x1="140" y1="0" x2="140" y2="60" />
+  </g>
+  
+  <!-- Disc/Identity Disc -->
+  <g class="disc-glow">
+    <circle class="disc" cx="30" cy="30" r="20" />
+    <circle class="inner-circle" cx="30" cy="30" r="15" />
+  </g>
+  
+  <!-- Text -->
+  <g class="logo-glow">
+    <text class="logo-text" x="65" y="38">QMS</text>
+  </g>
+</svg>

@@ -7,7 +7,8 @@
     <title>Token Queue System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/modern-style.css') }}" rel="stylesheet">
+    <!-- Theme CSS - Default is Tron Legacy theme -->
+    <link id="theme-css" href="{{ url_for('static', filename='css/tron-legacy-theme.css') }}" rel="stylesheet">
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -15,14 +16,19 @@
         <nav class="navbar navbar-expand-lg navbar-light mb-4">
             <div class="container-fluid">
                 <a class="navbar-brand" href="{{ url_for('index') }}">
-                    <img src="{{ url_for('static', filename='logo-modern.svg') }}" alt="Logo" class="logo" height="40">
+                    <img src="{{ url_for('static', filename='tron-logo.svg') }}" alt="Logo" class="logo" height="40">
                     <span class="ms-2 text-gradient">Token Queue System</span>
                 </a>
+                <div class="theme-toggle">
+                    <button id="theme-toggle-btn" class="btn btn-sm btn-outline-primary" title="Toggle Theme">
+                        <i class="bi bi-circle-half"></i>
+                    </button>
+                </div>
             </div>
         </nav>
 
         <!-- Real-time notification element -->
-        <div id="tokenUpdateNotification" role="alert">
+        <div id="tokenUpdateNotification" role="alert" class="token-notification">
             Token status updated
         </div>
 
@@ -66,6 +72,35 @@
             heading.className = 'display-4';
             heading.textContent = 'Token Queue System';
             this.parentNode.appendChild(heading);
+        });
+    </script>
+
+    <!-- Theme toggle functionality -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+            const themeCSS = document.getElementById('theme-css');
+
+            // Check if user has a saved preference
+            const savedTheme = localStorage.getItem('qms-theme');
+            if (savedTheme) {
+                themeCSS.href = "{{ url_for('static', filename='css/') }}" + savedTheme + ".css";
+            }
+
+            themeToggleBtn.addEventListener('click', function() {
+                // Toggle between themes
+                const currentTheme = themeCSS.href.includes('tron-legacy-theme') ? 'modern-style' : 'tron-legacy-theme';
+                themeCSS.href = "{{ url_for('static', filename='css/') }}" + currentTheme + ".css";
+
+                // Save preference
+                localStorage.setItem('qms-theme', currentTheme);
+
+                // Add a brief animation to the button
+                this.classList.add('rotate-animation');
+                setTimeout(() => {
+                    this.classList.remove('rotate-animation');
+                }, 500);
+            });
         });
     </script>
 
@@ -224,9 +259,9 @@
 
         // Function to play notification sound
         function playNotificationSound() {
-            // Create audio element
-            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio.volume = 0.5;
+            // Create audio element - using a more futuristic sound for Tron theme
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/1684/1684-preview.mp3');
+            audio.volume = 0.4;
             audio.play().catch(e => console.log('Error playing sound:', e));
         }
     </script>

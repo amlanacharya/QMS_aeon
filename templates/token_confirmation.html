@@ -22,7 +22,7 @@
                         <div class="text-center">
                             <div class="d-grid">
                                 {% if settings.use_thermal_printer %}
-                                <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-success btn-lg">
+                                <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-info btn-lg">
                                     <i class="bi bi-receipt"></i> Print Token
                                 </a>
                                 {% else %}

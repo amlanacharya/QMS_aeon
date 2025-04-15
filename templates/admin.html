@@ -153,13 +153,13 @@
 
                 <div class="printer-settings mt-4">
                     <h5 class="card-title">System-wide Printer Settings</h5>
-                    <div class="alert alert-{{ 'success' if settings.use_thermal_printer else 'primary' }} mb-3">
+                    <div class="alert alert-{{ 'info' if settings.use_thermal_printer else 'primary' }} mb-3">
                         <i class="bi {{ 'bi-receipt' if settings.use_thermal_printer else 'bi-printer' }} me-2"></i>
                         <strong>Current Mode:</strong> {{ 'Thermal Printer' if settings.use_thermal_printer else 'Standard Printer' }}
                         <p class="small mb-0 mt-1">This setting affects all users in the system.</p>
                     </div>
                     <div class="d-grid">
-                        <a href="{{ url_for('toggle_print_mode') }}" class="btn btn-{{ 'primary' if settings.use_thermal_printer else 'success' }}">
+                        <a href="{{ url_for('toggle_print_mode') }}" class="btn btn-{{ 'primary' if settings.use_thermal_printer else 'info' }}">
                             <i class="bi {{ 'bi-printer' if settings.use_thermal_printer else 'bi-receipt' }} me-2"></i>
                             Switch to {{ 'Standard Printer' if settings.use_thermal_printer else 'Thermal Printer' }}
                         </a>
@@ -249,7 +249,7 @@
                                             <i class="bi bi-play-fill"></i> Serve
                                         </a>
                                         {% if settings.use_thermal_printer %}
-                                        <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-success btn-sm" title="Print with Thermal Printer">
+                                        <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-info btn-sm" title="Print with Thermal Printer">
                                             <i class="bi bi-receipt"></i>
                                         </a>
                                         {% else %}
@@ -323,7 +323,7 @@
                                     <div class="btn-group btn-group-sm">
                                         <div class="btn-group btn-group-sm">
                                             {% if settings.use_thermal_printer %}
-                                            <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-success btn-sm" title="Print with Thermal Printer">
+                                            <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-info btn-sm" title="Print with Thermal Printer">
                                                 <i class="bi bi-receipt"></i>
                                             </a>
                                             {% else %}

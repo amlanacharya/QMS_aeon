@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Printer Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .print-example {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 15px;
+            width: 240px; /* Approximating 58mm printer width */
+            margin: 0 auto;
+            font-family: monospace;
+        }
+        .print-example .title {
+            text-align: center;
+            font-weight: bold;
+        }
+        .print-example .token-number {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .print-example .divider {
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h4>Thermal Printer Test</h4>
+                    </div>
+                    <div class="card-body text-center">
+                        <h5>Test printing via Bluetooth Print app</h5>
+                        <p>Please make sure you have installed the Bluetooth Print app and your printer is connected.</p>
+                        
+                        <div class="alert alert-info">
+                            <p><i class="bi bi-info-circle me-2"></i>This test will demonstrate various print capabilities including:</p>
+                            <ul class="text-start">
+                                <li>Text formatting (bold, centered, right-aligned)</li>
+                                <li>Font sizes (normal, double height, double size, small)</li>
+                                <li>Barcode generation</li>
+                                <li>QR code generation</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="print-example my-4">
+                            <div class="title">58mm Printer Test</div>
+                            <div>&nbsp;</div>
+                            <div>Normal text</div>
+                            <div><strong>Bold text</strong></div>
+                            <div style="text-align: center;">Centered text</div>
+                            <div style="text-align: center; font-size: 18px;">Large text</div>
+                            <div class="divider">-------------------------</div>
+                            <div style="text-align: center;">[BARCODE]</div>
+                            <div style="text-align: center;">[QR CODE]</div>
+                            <div style="text-align: center; font-size: 12px;">Printed: 2025-04-15 12:34:56</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-test" class="btn btn-success btn-lg">
+                                <i class="bi bi-printer"></i> Test Thermal Printer
+                            </a>
+                            
+                            <a href="{{ url_for('setup_guide') }}" class="btn btn-outline-info">
+                                <i class="bi bi-question-circle"></i> Printing Help
+                            </a>
+                            
+                            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-house"></i> Back to Home
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

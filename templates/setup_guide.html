@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Printer Setup Guide</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            font-weight: bold;
+        }
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .step {
+            margin-bottom: 30px;
+        }
+        .step h5 {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4>Thermal Printer Setup Guide</h4>
+                    </div>
+                    <div class="card-body">
+                        <h5>Setting up your thermal printer</h5>
+                        <p>This guide will help you set up your 58mm thermal printer with the Bluetooth Print app.</p>
+                        
+                        <div class="step">
+                            <h5><span class="step-number">1</span>Install the Bluetooth Print app</h5>
+                            <p>Download and install the "Bluetooth Print" app from Google Play Store:</p>
+                            <a href="https://play.google.com/store/apps/details?id=mate.bluetoothprint" class="btn btn-sm btn-primary" target="_blank">
+                                <i class="bi bi-google-play me-1"></i> Download App
+                            </a>
+                        </div>
+                        
+                        <div class="step">
+                            <h5><span class="step-number">2</span>Connect your printer</h5>
+                            <p>Connect your thermal printer to your Android device:</p>
+                            <div class="card mb-3">
+                                <div class="card-header">For Bluetooth printers:</div>
+                                <div class="card-body">
+                                    <ol>
+                                        <li>Turn on your thermal printer</li>
+                                        <li>Go to your Android device's Bluetooth settings</li>
+                                        <li>Make sure Bluetooth is enabled</li>
+                                        <li>Select "Scan" or "Search for devices"</li>
+                                        <li>Select your printer from the list of available devices</li>
+                                        <li>Follow any pairing instructions (default PIN is often 0000 or 1234)</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header">For USB printers:</div>
+                                <div class="card-body">
+                                    <ol>
+                                        <li>Connect your printer to your Android device using an OTG (On-The-Go) cable</li>
+                                        <li>Your device should detect the printer automatically</li>
+                                        <li>In the Bluetooth Print app, go to Settings and select USB connection mode</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <h5><span class="step-number">3</span>Enable Browser Print function</h5>
+                            <p>Open the Bluetooth Print app and follow these steps:</p>
+                            <ol>
+                                <li>Tap on the menu icon (three horizontal lines) in the top left corner</li>
+                                <li>Select "Settings"</li>
+                                <li>Find and enable "Browser Print" option - it should be toggled ON</li>
+                                <li>Allow any permission requests from the app</li>
+                                <li>Select your printer from the list of available devices in the app</li>
+                                <li>Test the connection using the app's built-in test print function</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="step">
+                            <h5><span class="step-number">4</span>Configure printer settings (for 58mm printer)</h5>
+                            <p>For best results with a 58mm printer, set these options in the app:</p>
+                            <ul>
+                                <li><strong>Paper Width:</strong> Select 58mm</li>
+                                <li><strong>Print Density:</strong> Medium (adjust as needed)</li>
+                                <li><strong>Character Set:</strong> UTF-8 for international character support</li>
+                                <li><strong>Printer Type:</strong> ESC/POS (most common thermal printer type)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="step">
+                            <h5><span class="step-number">5</span>Test your setup</h5>
+                            <p>Use our test page to ensure everything is working correctly:</p>
+                            <a href="{{ url_for('index') }}" class="btn btn-success">
+                                <i class="bi bi-printer me-1"></i> Go to Test Page
+                            </a>
+                        </div>
+                        
+                        <div class="alert alert-warning mt-4">
+                            <h6><i class="bi bi-exclamation-triangle me-2"></i>Troubleshooting</h6>
+                            <ul>
+                                <li><strong>Printer not detected:</strong> Make sure it's powered on and properly connected</li>
+                                <li><strong>App does not launch when clicking Print:</strong> Check if "Browser Print" is enabled in app settings</li>
+                                <li><strong>No printing occurs:</strong> Verify printer selection in the app</li>
+                                <li><strong>Print quality issues:</strong> Adjust print density in app settings</li>
+                                <li><strong>Paper jams:</strong> Make sure you're using the correct paper width (58mm)</li>
+                                <li><strong>Connection issues:</strong> Try restarting both the app and printer</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-info mt-4">
+                            <h6><i class="bi bi-lightbulb me-2"></i>Tips for 58mm Thermal Printers</h6>
+                            <ul>
+                                <li>Keep text lines under 32 characters to avoid word wrapping</li>
+                                <li>Limit the use of large font sizes as they may not fit the paper width</li>
+                                <li>Clean the printer head regularly for best print quality</li>
+                                <li>Store thermal paper away from heat and direct sunlight</li>
+                                <li>Make sure you're using proper thermal paper rolls (58mm width)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                                <i class="bi bi-house me-1"></i> Back to Home
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

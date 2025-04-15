@@ -1,55 +1,92 @@
-<!-- templates/index.html -->
-{% extends 'base.html' %}
-
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="token-container text-center">
-            <h2>NOW SERVING</h2>
-            {% if current_token %}
-                <div class="current-token">{{ current_token.token_number }}</div>
-            {% else %}
-                <div class="current-token">---</div>
-            {% endif %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Printer Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            font-weight: bold;
+        }
+        .jumbotron {
+            background-color: #f8f9fa;
+            padding: 2rem;
+            border-radius: 0.3rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="jumbotron text-center">
+            <h1 class="display-4">Thermal Printer Test</h1>
+            <p class="lead">Test your Bluetooth/USB thermal printer with the Bluetooth Print app</p>
+            <hr class="my-4">
+            <p>This simple app allows you to test if your thermal printer is working correctly with the Bluetooth Print app.</p>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        Test Print Pattern
+                    </div>
+                    <div class="card-body">
+                        <p>Print a test pattern with various text styles, barcode, and QR code.</p>
+                        <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-test" class="btn btn-primary">
+                            <i class="bi bi-printer"></i> Print Test Pattern
+                        </a>
+                    </div>
+                </div>
+            </div>
             
-            <div class="next-token mt-3">
-                <strong>NEXT: </strong>
-                {% if next_token %}
-                    {{ next_token.token_number }}
-                {% else %}
-                    ---
-                {% endif %}
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        Sample Token
+                    </div>
+                    <div class="card-body">
+                        <p>Print a sample token receipt as it would appear in the queue system.</p>
+                        <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-sample-token" class="btn btn-success">
+                            <i class="bi bi-receipt"></i> Print Sample Token
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
         
-        {% if settings.queue_active %}
-            <div class="token-form">
-                <h3 class="text-center mb-4">Get Your Token</h3>
-                <form action="{{ url_for('generate_token') }}" method="post">
-                    <div class="mb-3">
-                        <input type="text" class="form-control" name="application_number" placeholder="Application No." required>
-                    </div>
-                    <div class="mb-3">
-                        <input type="tel" class="form-control" name="phone_number" placeholder="Phone No." required>
-                    </div>
-                    <div class="mb-3">
-                        <input type="text" class="form-control" name="customer_name" placeholder="Customer Name" required>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">Generate Token</button>
-                    </div>
-                </form>
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                Setup Instructions
             </div>
-        {% else %}
-            <div class="alert alert-warning text-center">
-                <h4>Queue is currently paused</h4>
-                <p>Token generation is temporarily disabled. Please check back later.</p>
+            <div class="card-body">
+                <h5>Before Testing:</h5>
+                <ol>
+                    <li>Install the <a href="https://play.google.com/store/apps/details?id=mate.bluetoothprint" target="_blank">Bluetooth Print app</a> from Google Play Store</li>
+                    <li>Connect your thermal printer to your Android device via Bluetooth or USB</li>
+                    <li>Open the app and enable "Browser Print" function in the settings</li>
+                    <li>Click on one of the test buttons above</li>
+                </ol>
+                <a href="{{ url_for('setup_guide') }}" class="btn btn-info text-white mt-2">
+                    <i class="bi bi-info-circle"></i> Detailed Setup Guide
+                </a>
             </div>
-        {% endif %}
-        
-        <div class="text-center mt-4">
-            <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary btn-sm">Admin Login</a>
         </div>
     </div>
-</div>
-{% endblock %}
+    
+    <footer class="text-center mt-5">
+        <p class="text-muted">Thermal Printer Test App &copy; 2025</p>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

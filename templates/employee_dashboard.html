@@ -227,19 +227,15 @@
                                             <a href="{{ url_for('serve_token', token_id=token.id) }}" class="btn btn-success" title="Serve This Token">
                                                 <i class="bi bi-play-fill"></i> Serve
                                             </a>
-                                            <div class="btn-group btn-group-sm dropup">
-                                                <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Print Options">
-                                                    <i class="bi bi-printer"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{{ url_for('admin_print_token', token_id=token.id) }}" target="_blank">
-                                                        <i class="bi bi-printer me-1"></i> Standard Print
-                                                    </a></li>
-                                                    <li><a class="dropdown-item" href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}">
-                                                        <i class="bi bi-receipt me-1"></i> Thermal Print
-                                                    </a></li>
-                                                </ul>
-                                            </div>
+                                            {% if settings.use_thermal_printer %}
+                                            <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-success btn-sm" title="Print with Thermal Printer">
+                                                <i class="bi bi-receipt"></i>
+                                            </a>
+                                            {% else %}
+                                            <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-primary btn-sm" target="_blank" title="Print with Standard Printer">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                            {% endif %}
                                             <a href="{{ url_for('edit_token', token_id=token.id) }}" class="btn btn-outline-secondary" title="Edit Token">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
@@ -294,19 +290,15 @@
                                     <td>{{ token.served_at.strftime('%H:%M') }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <div class="btn-group btn-group-sm dropup">
-                                                <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Print Options">
-                                                    <i class="bi bi-printer"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{{ url_for('admin_print_token', token_id=token.id) }}" target="_blank">
-                                                        <i class="bi bi-printer me-1"></i> Standard Print
-                                                    </a></li>
-                                                    <li><a class="dropdown-item" href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}">
-                                                        <i class="bi bi-receipt me-1"></i> Thermal Print
-                                                    </a></li>
-                                                </ul>
-                                            </div>
+                                            {% if settings.use_thermal_printer %}
+                                            <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-success btn-sm" title="Print with Thermal Printer">
+                                                <i class="bi bi-receipt"></i>
+                                            </a>
+                                            {% else %}
+                                            <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-primary btn-sm" target="_blank" title="Print with Standard Printer">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                            {% endif %}
                                             <a href="{{ url_for('revert_token_status', token_id=token.id) }}"
                                                class="btn btn-outline-warning"
                                                onclick="return confirm('Revert this token status to PENDING?')"

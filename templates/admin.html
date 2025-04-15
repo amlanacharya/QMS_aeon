@@ -151,6 +151,21 @@
                     </div>
                 </div>
 
+                <div class="printer-settings mt-4">
+                    <h5 class="card-title">System-wide Printer Settings</h5>
+                    <div class="alert alert-{{ 'success' if settings.use_thermal_printer else 'primary' }} mb-3">
+                        <i class="bi {{ 'bi-receipt' if settings.use_thermal_printer else 'bi-printer' }} me-2"></i>
+                        <strong>Current Mode:</strong> {{ 'Thermal Printer' if settings.use_thermal_printer else 'Standard Printer' }}
+                        <p class="small mb-0 mt-1">This setting affects all users in the system.</p>
+                    </div>
+                    <div class="d-grid">
+                        <a href="{{ url_for('toggle_print_mode') }}" class="btn btn-{{ 'primary' if settings.use_thermal_printer else 'success' }}">
+                            <i class="bi {{ 'bi-printer' if settings.use_thermal_printer else 'bi-receipt' }} me-2"></i>
+                            Switch to {{ 'Standard Printer' if settings.use_thermal_printer else 'Thermal Printer' }}
+                        </a>
+                    </div>
+                </div>
+
                 <div class="system-info mt-4">
                     <div class="alert alert-light">
                         <small class="text-muted">
@@ -233,19 +248,15 @@
                                         <a href="{{ url_for('serve_token', token_id=token.id) }}" class="btn btn-success" title="Serve This Token">
                                             <i class="bi bi-play-fill"></i> Serve
                                         </a>
-                                        <div class="btn-group btn-group-sm dropup">
-                                            <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Print Options">
-                                                <i class="bi bi-printer"></i>
-                                            </button>
-                                            <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item" href="{{ url_for('admin_print_token', token_id=token.id) }}" target="_blank">
-                                                    <i class="bi bi-printer me-1"></i> Standard Print
-                                                </a></li>
-                                                <li><a class="dropdown-item" href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}">
-                                                    <i class="bi bi-receipt me-1"></i> Thermal Print
-                                                </a></li>
-                                            </ul>
-                                        </div>
+                                        {% if settings.use_thermal_printer %}
+                                        <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-success btn-sm" title="Print with Thermal Printer">
+                                            <i class="bi bi-receipt"></i>
+                                        </a>
+                                        {% else %}
+                                        <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-primary btn-sm" target="_blank" title="Print with Standard Printer">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
+                                        {% endif %}
                                         <a href="{{ url_for('edit_token', token_id=token.id) }}" class="btn btn-outline-secondary" title="Edit Token">
                                             <i class="bi bi-pencil"></i>
                                         </a>
@@ -311,19 +322,15 @@
                                 <td>
                                     <div class="btn-group btn-group-sm">
                                         <div class="btn-group btn-group-sm">
-                                            <div class="btn-group btn-group-sm dropup">
-                                                <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Print Options">
-                                                    <i class="bi bi-printer"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{{ url_for('admin_print_token', token_id=token.id) }}" target="_blank">
-                                                        <i class="bi bi-printer me-1"></i> Standard Print
-                                                    </a></li>
-                                                    <li><a class="dropdown-item" href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}">
-                                                        <i class="bi bi-receipt me-1"></i> Thermal Print
-                                                    </a></li>
-                                                </ul>
-                                            </div>
+                                            {% if settings.use_thermal_printer %}
+                                            <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}" class="btn btn-success btn-sm" title="Print with Thermal Printer">
+                                                <i class="bi bi-receipt"></i>
+                                            </a>
+                                            {% else %}
+                                            <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-primary btn-sm" target="_blank" title="Print with Standard Printer">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                            {% endif %}
                                         <a href="{{ url_for('edit_token', token_id=token.id) }}" class="btn btn-outline-secondary" title="Edit Token">
                                             <i class="bi bi-pencil"></i>
                                         </a>

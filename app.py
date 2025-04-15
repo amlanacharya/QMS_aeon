@@ -118,7 +118,8 @@ def inject_now():
 @app.context_processor
 def inject_helpers():
     return {
-        'get_active_reasons': get_active_reasons
+        'get_active_reasons': get_active_reasons,
+        'settings': get_settings()
     }
 
 db = SQLAlchemy(app)
@@ -210,6 +211,7 @@ class Settings(db.Model):
     queue_active = db.Column(db.Boolean, default=True)
     current_token_id = db.Column(db.Integer, default=0)
     last_token_number = db.Column(db.Integer, default=0)
+    use_thermal_printer = db.Column(db.Boolean, default=True)  # True for thermal printer, False for standard printer
 
 # Visit reason model
 class Reason(db.Model):
@@ -243,7 +245,7 @@ with app.app_context():
     db.create_all()
     # Initialize settings if not present
     if not Settings.query.first():
-        db.session.add(Settings(queue_active=True, current_token_id=0, last_token_number=0))
+        db.session.add(Settings(queue_active=True, current_token_id=0, last_token_number=0, use_thermal_printer=True))
         db.session.commit()
 
     # Initialize default reasons if not present
@@ -359,7 +361,8 @@ def token_confirmation(token_id):
         flash('Token not found', 'error')
         return redirect(url_for('index'))
 
-    return render_template('token_confirmation.html', token=token)
+    settings = get_settings()
+    return render_template('token_confirmation.html', token=token, settings=settings)
 
 @app.route('/next-token')
 def next_token():
@@ -563,6 +566,20 @@ def reset_counter():
         return redirect(url_for('admin'))
     else:
         return redirect(url_for('employee_dashboard'))
+
+@app.route('/toggle-print-mode')
+def toggle_print_mode():
+    if not is_admin():
+        flash('Admin access required', 'error')
+        return redirect(url_for('index'))
+
+    settings = get_settings()
+    settings.use_thermal_printer = not settings.use_thermal_printer
+    db.session.commit()
+
+    mode = 'Thermal Printer' if settings.use_thermal_printer else 'Standard Printer'
+    flash(f'Print mode changed to {mode}', 'success')
+    return redirect(url_for('admin'))
 
 @app.route('/export-data')
 def export_data():
@@ -978,8 +995,12 @@ def admin_print_token(token_id):
         else:
             return redirect(url_for('employee_dashboard'))
 
-    # By default, use the thermal template
-    return render_template('thermal_print_token.html', token=token)
+    # Check settings to determine which template to use
+    settings = get_settings()
+    if settings.use_thermal_printer:
+        return render_template('thermal_print_token.html', token=token)
+    else:
+        return render_template('admin_print_token_legacy.html', token=token)
 @app.route('/print-token/<int:token_id>')
 def print_token(token_id):
     token = Token.query.get(token_id)
@@ -987,8 +1008,12 @@ def print_token(token_id):
         flash('Token not found', 'error')
         return redirect(url_for('index'))
 
-    # Use the thermal template by default
-    return render_template('thermal_print_token.html', token=token)
+    # Check settings to determine which template to use
+    settings = get_settings()
+    if settings.use_thermal_printer:
+        return render_template('thermal_print_token.html', token=token)
+    else:
+        return render_template('token_print_legacy.html', token=token)
 @app.route('/standard-print-token/<int:token_id>')
 def standard_print_token(token_id):
     token = Token.query.get(token_id)
@@ -1841,6 +1866,11 @@ def print_token_json(token_id):
 
 @app.route('/print-test')
 def print_test():
+    settings = get_settings()
+    # Only show the print test page if thermal printing is enabled
+    if not settings.use_thermal_printer:
+        flash('Thermal printing is currently disabled by the administrator', 'warning')
+        return redirect(url_for('index'))
     return render_template('print_test.html')
 
 @app.route('/api/print-test')
@@ -1954,6 +1984,11 @@ def print_test_json():
 
 @app.route('/thermal-print-help')
 def thermal_print_help():
+    settings = get_settings()
+    # Only show the thermal print help page if thermal printing is enabled
+    if not settings.use_thermal_printer:
+        flash('Thermal printing is currently disabled by the administrator', 'warning')
+        return redirect(url_for('index'))
     return render_template('thermal_print_help.html')
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

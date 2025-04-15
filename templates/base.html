@@ -184,11 +184,13 @@
             <p>Token Queue Management System &copy; {{ now() }}</p>
             <!-- Add this to the base.html file in the footer section, just before the closing footer tag -->
 
+            {% if settings and settings.use_thermal_printer %}
             <div class="text-center mt-2">
                 <a href="{{ url_for('thermal_print_help') }}" class="text-muted small">
                     <i class="bi bi-printer me-1"></i>Thermal Printer Setup Guide
                 </a>
             </div>
+            {% endif %}
         </footer>
     </div>
 
@@ -274,14 +276,14 @@
                     nextTokenElement.textContent = '---';
                 }
             }
-            
+
             // Update skipped tokens list if it exists
             const skippedTokensListElement = document.getElementById('skippedTokensList');
             if (skippedTokensListElement && data.skipped_tokens) {
                 // Check if there was any change in skipped tokens
                 const currentSkippedTokensHtml = skippedTokensListElement.innerHTML;
                 let newSkippedTokensHtml = '';
-                
+
                 if (data.skipped_tokens.length > 0) {
                     for (let i = 0; i < data.skipped_tokens.length; i++) {
                         newSkippedTokensHtml += `<span class="skipped-token-item">${data.skipped_tokens[i].token_number}</span>`;
@@ -292,7 +294,7 @@
                 } else {
                     newSkippedTokensHtml = '<span class="text-muted">None</span>';
                 }
-                
+
                 if (currentSkippedTokensHtml !== newSkippedTokensHtml) {
                     skippedTokensListElement.innerHTML = newSkippedTokensHtml;
                     // If a token was just skipped, we should notify

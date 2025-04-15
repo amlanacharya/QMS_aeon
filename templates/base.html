@@ -182,6 +182,13 @@
 
         <footer class="text-center">
             <p>Token Queue Management System &copy; {{ now() }}</p>
+            <!-- Add this to the base.html file in the footer section, just before the closing footer tag -->
+
+            <div class="text-center mt-2">
+                <a href="{{ url_for('thermal_print_help') }}" class="text-muted small">
+                    <i class="bi bi-printer me-1"></i>Thermal Printer Setup Guide
+                </a>
+            </div>
         </footer>
     </div>
 

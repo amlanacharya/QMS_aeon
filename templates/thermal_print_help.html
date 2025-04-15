@@ -1,0 +1,102 @@
+<!-- templates/thermal_print_help.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4>Thermal Printer Setup Guide</h4>
+            </div>
+            <div class="card-body">
+                <h5>Setting up your thermal printer</h5>
+                <p>This system supports printing to Bluetooth/USB thermal printers using the "Bluetooth Print" app for Android.</p>
+                
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-1-circle me-2"></i>Step 1: Install the app</h6>
+                    <p>Download and install the "Bluetooth Print" app from Google Play Store:</p>
+                    <a href="https://play.google.com/store/apps/details?id=mate.bluetoothprint" class="btn btn-sm btn-primary" target="_blank">
+                        <i class="bi bi-google-play me-1"></i> Download App
+                    </a>
+                </div>
+                
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-2-circle me-2"></i>Step 2: Connect your printer</h6>
+                    <p>Connect your thermal printer to your Android device:</p>
+                    <ul>
+                        <li><strong>For Bluetooth printers:</strong> Pair your printer with your Android device in Bluetooth settings</li>
+                        <li><strong>For USB printers:</strong> Connect using an OTG cable and enable USB connection in the app</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-3-circle me-2"></i>Step 3: Enable Browser Print function</h6>
+                    <p>Open the Bluetooth Print app and follow these steps:</p>
+                    <ol>
+                        <li>Go to Settings</li>
+                        <li>Find and enable "Browser Print" option</li>
+                        <li>Allow any permission requests from the app</li>
+                    </ol>
+                    <img src="https://via.placeholder.com/300x150" alt="Enable Browser Print Setting" class="img-fluid rounded mt-2">
+                </div>
+                
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-4-circle me-2"></i>Step 4: Test your setup</h6>
+                    <p>Use our test page to ensure everything is working correctly:</p>
+                    <a href="{{ url_for('print_test') }}" class="btn btn-sm btn-success">
+                        <i class="bi bi-printer me-1"></i> Go to Test Page
+                    </a>
+                </div>
+                
+                <div class="alert alert-warning mt-4">
+                    <h6><i class="bi bi-exclamation-triangle me-2"></i>Troubleshooting</h6>
+                    <ul>
+                        <li>Make sure your printer is turned on and has paper loaded</li>
+                        <li>Ensure the printer is properly connected and recognized by the app</li>
+                        <li>Verify that the app has permission to open links (check Android settings)</li>
+                        <li>If using a local server, make sure your device can access it on the same network</li>
+                        <li>Try restarting the app and/or printer if prints don't work</li>
+                        <li>Check printer connection in the Bluetooth Print app settings</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-secondary mt-4">
+                    <h6><i class="bi bi-gear me-2"></i>Advanced Settings</h6>
+                    <p>Thermal printers may have different capabilities. You can adjust these settings in the Bluetooth Print app:</p>
+                    <ul>
+                        <li><strong>Paper Width:</strong> Typically 58mm or 80mm</li>
+                        <li><strong>Print Density:</strong> Affects how dark the print appears</li>
+                        <li><strong>Character Set:</strong> For non-English characters</li>
+                        <li><strong>Print Speed:</strong> Higher speeds may reduce quality</li>
+                    </ul>
+                </div>
+                
+                <div class="d-grid gap-2 mt-4">
+                    <a href="{{ url_for('print_test') }}" class="btn btn-primary">
+                        <i class="bi bi-printer me-1"></i> Test Printer Now
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-house me-1"></i> Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<style>
+    .alert h6 {
+        margin-bottom: 12px;
+        font-weight: bold;
+    }
+    
+    .img-fluid {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #ddd;
+    }
+</style>
+{% endblock %}

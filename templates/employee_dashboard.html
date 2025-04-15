@@ -227,9 +227,19 @@
                                             <a href="{{ url_for('serve_token', token_id=token.id) }}" class="btn btn-success" title="Serve This Token">
                                                 <i class="bi bi-play-fill"></i> Serve
                                             </a>
-                                            <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-outline-primary" target="_blank" title="Print Token">
-                                                <i class="bi bi-printer"></i>
-                                            </a>
+                                            <div class="btn-group btn-group-sm dropup">
+                                                <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Print Options">
+                                                    <i class="bi bi-printer"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="{{ url_for('admin_print_token', token_id=token.id) }}" target="_blank">
+                                                        <i class="bi bi-printer me-1"></i> Standard Print
+                                                    </a></li>
+                                                    <li><a class="dropdown-item" href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}">
+                                                        <i class="bi bi-receipt me-1"></i> Thermal Print
+                                                    </a></li>
+                                                </ul>
+                                            </div>
                                             <a href="{{ url_for('edit_token', token_id=token.id) }}" class="btn btn-outline-secondary" title="Edit Token">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
@@ -284,9 +294,19 @@
                                     <td>{{ token.served_at.strftime('%H:%M') }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{{ url_for('admin_print_token', token_id=token.id) }}" class="btn btn-outline-primary" target="_blank" title="Print Token">
-                                                <i class="bi bi-printer"></i>
-                                            </a>
+                                            <div class="btn-group btn-group-sm dropup">
+                                                <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Print Options">
+                                                    <i class="bi bi-printer"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="{{ url_for('admin_print_token', token_id=token.id) }}" target="_blank">
+                                                        <i class="bi bi-printer me-1"></i> Standard Print
+                                                    </a></li>
+                                                    <li><a class="dropdown-item" href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-token/{{ token.id }}">
+                                                        <i class="bi bi-receipt me-1"></i> Thermal Print
+                                                    </a></li>
+                                                </ul>
+                                            </div>
                                             <a href="{{ url_for('revert_token_status', token_id=token.id) }}"
                                                class="btn btn-outline-warning"
                                                onclick="return confirm('Revert this token status to PENDING?')"

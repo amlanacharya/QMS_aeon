@@ -1788,6 +1788,247 @@ def skip_token():
         return redirect(url_for('admin'))
     else:
         return redirect(url_for('employee_dashboard'))
+# Add these routes to your app.py file
 
+@app.route('/api/print-token/<int:token_id>')
+def print_token_json(token_id):
+    """API endpoint that returns JSON data for the Bluetooth Print app"""
+    token = Token.query.get_or_404(token_id)
+    
+    # Format date in a way that fits the small thermal paper
+    formatted_date = token.created_at.strftime('%Y-%m-%d %H:%M')
+    
+    # Prepare JSON data according to the Bluetooth Print app requirements
+    print_data = {}  # Using a dict with numerical keys as required by the API
+    
+    # Add a title
+    print_data["0"] = {
+        "type": 0,  # text
+        "content": "Token Receipt",
+        "bold": 1,
+        "align": 1,  # center
+        "format": 1  # double height
+    }
+    
+    # Add an empty line
+    print_data["1"] = {
+        "type": 0,
+        "content": " ",
+        "bold": 0,
+        "align": 1
+    }
+    
+    # Add token number (large)
+    print_data["2"] = {
+        "type": 0,
+        "content": token.token_number,
+        "bold": 1,
+        "align": 1,
+        "format": 2  # double height and width
+    }
+    
+    # Add customer details
+    print_data["3"] = {
+        "type": 0,
+        "content": "Name: " + token.customer_name,
+        "bold": 0,
+        "align": 0  # left
+    }
+    
+    print_data["4"] = {
+        "type": 0,
+        "content": "Reason: " + token.visit_reason,
+        "bold": 0,
+        "align": 0
+    }
+    
+    print_data["5"] = {
+        "type": 0,
+        "content": "Phone: " + token.phone_number,
+        "bold": 0,
+        "align": 0
+    }
+    
+    print_data["6"] = {
+        "type": 0,
+        "content": "Time: " + formatted_date,
+        "bold": 0,
+        "align": 0
+    }
+    
+    # Add an empty line
+    print_data["7"] = {
+        "type": 0,
+        "content": " ",
+        "bold": 0,
+        "align": 1
+    }
+    
+    # Add footer
+    print_data["8"] = {
+        "type": 0,
+        "content": "Please wait for your number to be called",
+        "bold": 0,
+        "align": 1
+    }
+    
+    print_data["9"] = {
+        "type": 0,
+        "content": "Thank you for your patience!",
+        "bold": 0,
+        "align": 1
+    }
+    
+    # Generate QR code with token number
+    print_data["10"] = {
+        "type": 3,  # QR code
+        "value": token.token_number,
+        "size": 20,
+        "align": 1
+    }
+    
+    # Add an empty line
+    print_data["11"] = {
+        "type": 0,
+        "content": " ",
+        "bold": 0,
+        "align": 1
+    }
+    
+    # Return the data as JSON
+    return jsonify(print_data)
+
+@app.route('/print-test')
+def print_test():
+    """Page with a button to test thermal printing"""
+    return render_template('print_test.html')
+
+@app.route('/api/print-test')
+def print_test_json():
+    """API endpoint that returns test print data in JSON format"""
+    # Prepare test print data
+    print_data = {}
+    
+    # Add title
+    print_data["0"] = {
+        "type": 0,
+        "content": "Printer Test",
+        "bold": 1,
+        "align": 1,
+        "format": 1
+    }
+    
+    # Add empty line
+    print_data["1"] = {
+        "type": 0,
+        "content": " ",
+        "bold": 0,
+        "align": 1
+    }
+    
+    # Add various text formats
+    print_data["2"] = {
+        "type": 0,
+        "content": "Normal Text",
+        "bold": 0,
+        "align": 0,
+        "format": 0
+    }
+    
+    print_data["3"] = {
+        "type": 0,
+        "content": "Bold Text",
+        "bold": 1,
+        "align": 0,
+        "format": 0
+    }
+    
+    print_data["4"] = {
+        "type": 0,
+        "content": "Centered Text",
+        "bold": 0,
+        "align": 1,
+        "format": 0
+    }
+    
+    print_data["5"] = {
+        "type": 0,
+        "content": "Right Aligned",
+        "bold": 0,
+        "align": 2,
+        "format": 0
+    }
+    
+    # Add different formats
+    print_data["6"] = {
+        "type": 0,
+        "content": "Double Height",
+        "bold": 0,
+        "align": 1,
+        "format": 1
+    }
+    
+    print_data["7"] = {
+        "type": 0,
+        "content": "Double Size",
+        "bold": 0,
+        "align": 1,
+        "format": 2
+    }
+    
+    print_data["8"] = {
+        "type": 0,
+        "content": "Double Width",
+        "bold": 0,
+        "align": 1,
+        "format": 3
+    }
+    
+    print_data["9"] = {
+        "type": 0,
+        "content": "Small Font",
+        "bold": 0,
+        "align": 1,
+        "format": 4
+    }
+    
+    # Add barcode
+    print_data["10"] = {
+        "type": 2,  # barcode
+        "value": "1234567890",
+        "width": 100,
+        "height": 50,
+        "align": 1
+    }
+    
+    # Add QR code
+    print_data["11"] = {
+        "type": 3,  # QR code
+        "value": "QMS Test Print",
+        "size": 40,
+        "align": 1
+    }
+    
+    # Add HTML
+    print_data["12"] = {
+        "type": 4,  # HTML Code
+        "content": "<center><span style=\"font-weight:bold; font-size:20px;\">HTML Content</span></center>"
+    }
+    
+    # Add current date/time
+    current_time = get_ist_time().strftime('%Y-%m-%d %H:%M:%S')
+    print_data["13"] = {
+        "type": 0,
+        "content": f"Printed: {current_time}",
+        "bold": 0,
+        "align": 1
+    }
+    
+    return jsonify(print_data)
+
+@app.route('/thermal-print-help')
+def thermal_print_help():
+    """Help page for thermal printing setup"""
+    return render_template('thermal_print_help.html')
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

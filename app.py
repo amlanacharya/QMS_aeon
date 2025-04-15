@@ -1,5 +1,5 @@
 # app.py
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timezone, timedelta
@@ -1789,35 +1789,26 @@ def skip_token():
         return redirect(url_for('admin'))
     else:
         return redirect(url_for('employee_dashboard'))
-# Add these routes to your app.py file
-
 @app.route('/api/print-token/<int:token_id>')
 def print_token_json(token_id):
     token = Token.query.get_or_404(token_id)
 
-    # Format date in a way that fits the small thermal paper
     formatted_date = token.created_at.strftime('%Y-%m-%d %H:%M')
 
-    # Create array for the JSON data
     a = []
 
-    # Title - centered
     obj1 = {"type": 0, "content": "Token Receipt", "bold": 1, "align": 1, "format": 0}
     a.append(obj1)
 
-    # Empty line
     obj2 = {"type": 0, "content": " ", "bold": 0, "align": 0, "format": 0}
     a.append(obj2)
 
-    # Token number - large and centered
     obj3 = {"type": 0, "content": token.token_number, "bold": 1, "align": 1, "format": 2}
     a.append(obj3)
 
-    # Empty line
     obj4 = {"type": 0, "content": " ", "bold": 0, "align": 0, "format": 0}
     a.append(obj4)
 
-    # Customer details - left aligned for better readability on narrow paper
     obj5 = {"type": 0, "content": "Name: " + token.customer_name, "bold": 0, "align": 0, "format": 0}
     a.append(obj5)
 
@@ -1830,22 +1821,18 @@ def print_token_json(token_id):
     obj8 = {"type": 0, "content": "Time: " + formatted_date, "bold": 0, "align": 0, "format": 0}
     a.append(obj8)
 
-    # Divider
     obj9 = {"type": 0, "content": "-------------------------", "bold": 0, "align": 1, "format": 0}
     a.append(obj9)
 
-    # Footer - centered
     obj10 = {"type": 0, "content": "Please wait for your", "bold": 0, "align": 1, "format": 0}
     a.append(obj10)
 
     obj11 = {"type": 0, "content": "number to be called", "bold": 0, "align": 1, "format": 0}
     a.append(obj11)
 
-    # Thank you message
     obj12 = {"type": 0, "content": "Thank you for your patience!", "bold": 0, "align": 1, "format": 0}
     a.append(obj12)
 
-    # Convert list to dict with numerical keys
     result = {}
     for i, obj in enumerate(a):
         result[str(i)] = obj
@@ -1854,16 +1841,12 @@ def print_token_json(token_id):
 
 @app.route('/print-test')
 def print_test():
-    """Page with a button to test thermal printing"""
     return render_template('print_test.html')
 
 @app.route('/api/print-test')
 def print_test_json():
-    """API endpoint that returns test print data in JSON format"""
-    # Prepare test print data
     print_data = {}
 
-    # Add title
     print_data["0"] = {
         "type": 0,
         "content": "Printer Test",
@@ -1872,7 +1855,6 @@ def print_test_json():
         "format": 1
     }
 
-    # Add empty line
     print_data["1"] = {
         "type": 0,
         "content": " ",
@@ -1880,7 +1862,6 @@ def print_test_json():
         "align": 1
     }
 
-    # Add various text formats
     print_data["2"] = {
         "type": 0,
         "content": "Normal Text",
@@ -1913,7 +1894,6 @@ def print_test_json():
         "format": 0
     }
 
-    # Add different formats
     print_data["6"] = {
         "type": 0,
         "content": "Double Height",
@@ -1946,7 +1926,6 @@ def print_test_json():
         "format": 4
     }
 
-    # Divider
     print_data["10"] = {
         "type": 0,
         "content": "-------------------------",
@@ -1955,7 +1934,6 @@ def print_test_json():
         "format": 0
     }
 
-    # Add current date/time
     current_time = get_ist_time().strftime('%Y-%m-%d %H:%M:%S')
     print_data["11"] = {
         "type": 0,
@@ -1964,7 +1942,6 @@ def print_test_json():
         "align": 1
     }
 
-    # Final message
     print_data["12"] = {
         "type": 0,
         "content": "Printer test complete",
@@ -1977,7 +1954,6 @@ def print_test_json():
 
 @app.route('/thermal-print-help')
 def thermal_print_help():
-    """Help page for thermal printing setup"""
     return render_template('thermal_print_help.html')
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 import os
 import pandas as pd
 import io
+import json
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'SECRETPASS'
@@ -1792,111 +1793,64 @@ def skip_token():
 
 @app.route('/api/print-token/<int:token_id>')
 def print_token_json(token_id):
-    """API endpoint that returns JSON data for the Bluetooth Print app"""
     token = Token.query.get_or_404(token_id)
     
     # Format date in a way that fits the small thermal paper
     formatted_date = token.created_at.strftime('%Y-%m-%d %H:%M')
     
-    # Prepare JSON data according to the Bluetooth Print app requirements
-    print_data = {}  # Using a dict with numerical keys as required by the API
+    # Create array for the JSON data
+    a = []
     
-    # Add a title
-    print_data["0"] = {
-        "type": 0,  # text
-        "content": "Token Receipt",
-        "bold": 1,
-        "align": 1,  # center
-        "format": 1  # double height
-    }
+    # Title - centered
+    obj1 = {"type": 0, "content": "Token Receipt", "bold": 1, "align": 1, "format": 0}
+    a.append(obj1)
     
-    # Add an empty line
-    print_data["1"] = {
-        "type": 0,
-        "content": " ",
-        "bold": 0,
-        "align": 1
-    }
+    # Empty line
+    obj2 = {"type": 0, "content": " ", "bold": 0, "align": 0, "format": 0}
+    a.append(obj2)
     
-    # Add token number (large)
-    print_data["2"] = {
-        "type": 0,
-        "content": token.token_number,
-        "bold": 1,
-        "align": 1,
-        "format": 2  # double height and width
-    }
+    # Token number - large and centered
+    obj3 = {"type": 0, "content": token.token_number, "bold": 1, "align": 1, "format": 2}
+    a.append(obj3)
     
-    # Add customer details
-    print_data["3"] = {
-        "type": 0,
-        "content": "Name: " + token.customer_name,
-        "bold": 0,
-        "align": 0  # left
-    }
+    # Empty line
+    obj4 = {"type": 0, "content": " ", "bold": 0, "align": 0, "format": 0}
+    a.append(obj4)
     
-    print_data["4"] = {
-        "type": 0,
-        "content": "Reason: " + token.visit_reason,
-        "bold": 0,
-        "align": 0
-    }
+    # Customer details - left aligned for better readability on narrow paper
+    obj5 = {"type": 0, "content": "Name: " + token.customer_name, "bold": 0, "align": 0, "format": 0}
+    a.append(obj5)
     
-    print_data["5"] = {
-        "type": 0,
-        "content": "Phone: " + token.phone_number,
-        "bold": 0,
-        "align": 0
-    }
+    obj6 = {"type": 0, "content": "Reason: " + token.visit_reason, "bold": 0, "align": 0, "format": 0}
+    a.append(obj6)
     
-    print_data["6"] = {
-        "type": 0,
-        "content": "Time: " + formatted_date,
-        "bold": 0,
-        "align": 0
-    }
+    obj7 = {"type": 0, "content": "Phone: " + token.phone_number, "bold": 0, "align": 0, "format": 0}
+    a.append(obj7)
     
-    # Add an empty line
-    print_data["7"] = {
-        "type": 0,
-        "content": " ",
-        "bold": 0,
-        "align": 1
-    }
+    obj8 = {"type": 0, "content": "Time: " + formatted_date, "bold": 0, "align": 0, "format": 0}
+    a.append(obj8)
     
-    # Add footer
-    print_data["8"] = {
-        "type": 0,
-        "content": "Please wait for your number to be called",
-        "bold": 0,
-        "align": 1
-    }
+    # Divider
+    obj9 = {"type": 0, "content": "-------------------------", "bold": 0, "align": 1, "format": 0}
+    a.append(obj9)
     
-    print_data["9"] = {
-        "type": 0,
-        "content": "Thank you for your patience!",
-        "bold": 0,
-        "align": 1
-    }
+    # Footer - centered
+    obj10 = {"type": 0, "content": "Please wait for your", "bold": 0, "align": 1, "format": 0}
+    a.append(obj10)
     
-    # Generate QR code with token number
-    print_data["10"] = {
-        "type": 3,  # QR code
-        "value": token.token_number,
-        "size": 20,
-        "align": 1
-    }
+    obj11 = {"type": 0, "content": "number to be called", "bold": 0, "align": 1, "format": 0}
+    a.append(obj11)
     
-    # Add an empty line
-    print_data["11"] = {
-        "type": 0,
-        "content": " ",
-        "bold": 0,
-        "align": 1
-    }
+    # QR code - smaller size for 58mm paper
+    obj12 = {"type": 3, "value": token.token_number, "size": 25, "align": 1}
+    a.append(obj12)
     
-    # Return the data as JSON
-    return jsonify(print_data)
+    # Convert list to dict with numerical keys
+    result = {}
+    for i, obj in enumerate(a):
+        result[str(i)] = obj
+    
+    return jsonify(result)
 
 @app.route('/print-test')
 def print_test():

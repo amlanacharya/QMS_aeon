@@ -31,10 +31,10 @@ def handle_connect():
     current_token = get_current_token()
     next_token = get_next_token()
     settings = get_settings()
-    
+
     # Get recently skipped tokens
     skipped_tokens = Token.query.filter_by(status='SKIPPED').order_by(Token.last_skipped_at.desc()).limit(10).all()
-    
+
     # Convert token objects to dictionaries for JSON serialization
     current_token_data = None
     if current_token:
@@ -50,7 +50,7 @@ def handle_connect():
         next_token_data = {
             'token_number': next_token.token_number
         }
-        
+
     skipped_tokens_data = []
     for token in skipped_tokens:
         skipped_tokens_data.append({
@@ -74,7 +74,7 @@ def broadcast_token_update():
     current_token = get_current_token()
     next_token = get_next_token()
     settings = get_settings()
-    
+
     # Get recently skipped tokens
     skipped_tokens = Token.query.filter_by(status='SKIPPED').order_by(Token.last_skipped_at.desc()).limit(10).all()
 
@@ -93,7 +93,7 @@ def broadcast_token_update():
         next_token_data = {
             'token_number': next_token.token_number
         }
-        
+
     skipped_tokens_data = []
     for token in skipped_tokens:
         skipped_tokens_data.append({
@@ -315,7 +315,7 @@ def index():
     current_token = get_current_token()
     next_token = get_next_token()
     skipped_tokens = Token.query.filter_by(status='SKIPPED').order_by(Token.last_skipped_at.desc()).limit(10).all()
-    
+
     return render_template('index.html',
                           settings=settings,
                           current_token=current_token,
@@ -585,7 +585,7 @@ def export_data():
                 'Status': token.status,
                 'Created At': token.created_at,
                 'Recall Count': token.recall_count,
-                'Skip Count': token.skip_count,  
+                'Skip Count': token.skip_count,
                 'Was Skipped': token.skip_count > 0,
             }
 
@@ -610,7 +610,7 @@ def export_data():
                         else:
                             # Both are either naive or aware
                             recovery_delta = token.served_at - token.last_skipped_at
-                        
+
                         token_item['Recovery Time (sec)'] = int(recovery_delta.total_seconds())
                         token_item['Recovery Time (min)'] = round(int(recovery_delta.total_seconds()) / 60, 1)
 
@@ -837,7 +837,7 @@ def export_data():
                     else:
                         recovery_delta = token.served_at - token.last_skipped_at
                     recovery_time = int(recovery_delta.total_seconds())
-                
+
                 recovery_data.append({
                     'Token Number': token.token_number,
                     'Customer Name': token.customer_name,
@@ -861,7 +861,7 @@ def export_data():
                 hour_df.to_excel(writer, sheet_name='Hour Analysis', index=False)
                 reason_df.to_excel(writer, sheet_name='Reason Analysis', index=False)
                 staff_df.to_excel(writer, sheet_name='Staff Performance', index=False)
-                recovery_df.to_excel(writer, sheet_name='Recovery Analysis', index=False)  
+                recovery_df.to_excel(writer, sheet_name='Recovery Analysis', index=False)
 
                 # Format the Excel file
                 workbook = writer.book
@@ -1108,7 +1108,7 @@ def revert_token_status(token_id):
         # If this token came before the current token and is now pending,
         # it should be the next token to be served
         if is_earlier_token:
-            
+
             pass
 
         db.session.commit()
@@ -1178,7 +1178,7 @@ def delete_token(token_id):
     db.session.delete(token)
     db.session.commit()
 
-   
+
     if is_next_token:
         # Get the new next token after deletion
         new_next_token = get_next_token()
@@ -1502,7 +1502,7 @@ def update_employee(employee_id):
     # Only update password if provided
     password = request.form.get('password')
     if password and password.strip():
-        employee.password = password  
+        employee.password = password
 
     db.session.commit()
 
@@ -1535,7 +1535,7 @@ def employee_login_process():
 
     employee = Employee.query.filter_by(employee_id=employee_id).first()
 
-    if employee and employee.password == password and employee.is_active: 
+    if employee and employee.password == password and employee.is_active:
         session['employee_id'] = employee.id
         session['employee_name'] = employee.name
         session['employee_role'] = employee.role
@@ -1652,7 +1652,7 @@ def serve_token(token_id):
         # Calculate recovery time (time between skipping and serving)
         if token.last_skipped_at:
             recovery_time = int((get_ist_time() - token.last_skipped_at).total_seconds())
-            token.recovery_time = recovery_time            
+            token.recovery_time = recovery_time
         status_change = TokenStatusChange(
              token_id=token.id,
              old_status='SKIPPED',
@@ -1660,7 +1660,7 @@ def serve_token(token_id):
              changed_by=session.get('employee_id')
          )
         db.session.add(status_change)
-        
+
         flash(f'Serving previously skipped token {token.token_number}. Token was skipped {token.skip_count} times.', 'info')
 
     # If there's a current token, mark it as served
@@ -1691,7 +1691,7 @@ def serve_token(token_id):
 
         # Calculate service duration in seconds
         if current_token.created_at:
-        
+
             if current_token.created_at.tzinfo is None:
                 served_at_naive = current_token.served_at.replace(tzinfo=None)
                 delta = served_at_naive - current_token.created_at
@@ -1756,7 +1756,7 @@ def skip_token():
         # Increment skip count and record skip time
         current_token.skip_count += 1
         current_token.last_skipped_at = get_ist_time()
-        
+
         # Record which employee skipped this token
         if 'employee_id' in session:
             employee_id = session['employee_id']
@@ -1794,62 +1794,62 @@ def skip_token():
 @app.route('/api/print-token/<int:token_id>')
 def print_token_json(token_id):
     token = Token.query.get_or_404(token_id)
-    
+
     # Format date in a way that fits the small thermal paper
     formatted_date = token.created_at.strftime('%Y-%m-%d %H:%M')
-    
+
     # Create array for the JSON data
     a = []
-    
+
     # Title - centered
     obj1 = {"type": 0, "content": "Token Receipt", "bold": 1, "align": 1, "format": 0}
     a.append(obj1)
-    
+
     # Empty line
     obj2 = {"type": 0, "content": " ", "bold": 0, "align": 0, "format": 0}
     a.append(obj2)
-    
+
     # Token number - large and centered
     obj3 = {"type": 0, "content": token.token_number, "bold": 1, "align": 1, "format": 2}
     a.append(obj3)
-    
+
     # Empty line
     obj4 = {"type": 0, "content": " ", "bold": 0, "align": 0, "format": 0}
     a.append(obj4)
-    
+
     # Customer details - left aligned for better readability on narrow paper
     obj5 = {"type": 0, "content": "Name: " + token.customer_name, "bold": 0, "align": 0, "format": 0}
     a.append(obj5)
-    
+
     obj6 = {"type": 0, "content": "Reason: " + token.visit_reason, "bold": 0, "align": 0, "format": 0}
     a.append(obj6)
-    
+
     obj7 = {"type": 0, "content": "Phone: " + token.phone_number, "bold": 0, "align": 0, "format": 0}
     a.append(obj7)
-    
+
     obj8 = {"type": 0, "content": "Time: " + formatted_date, "bold": 0, "align": 0, "format": 0}
     a.append(obj8)
-    
+
     # Divider
     obj9 = {"type": 0, "content": "-------------------------", "bold": 0, "align": 1, "format": 0}
     a.append(obj9)
-    
+
     # Footer - centered
     obj10 = {"type": 0, "content": "Please wait for your", "bold": 0, "align": 1, "format": 0}
     a.append(obj10)
-    
+
     obj11 = {"type": 0, "content": "number to be called", "bold": 0, "align": 1, "format": 0}
     a.append(obj11)
-    
-    # QR code - smaller size for 58mm paper
-    obj12 = {"type": 3, "value": token.token_number, "size": 25, "align": 1}
+
+    # Thank you message
+    obj12 = {"type": 0, "content": "Thank you for your patience!", "bold": 0, "align": 1, "format": 0}
     a.append(obj12)
-    
+
     # Convert list to dict with numerical keys
     result = {}
     for i, obj in enumerate(a):
         result[str(i)] = obj
-    
+
     return jsonify(result)
 
 @app.route('/print-test')
@@ -1862,7 +1862,7 @@ def print_test_json():
     """API endpoint that returns test print data in JSON format"""
     # Prepare test print data
     print_data = {}
-    
+
     # Add title
     print_data["0"] = {
         "type": 0,
@@ -1871,7 +1871,7 @@ def print_test_json():
         "align": 1,
         "format": 1
     }
-    
+
     # Add empty line
     print_data["1"] = {
         "type": 0,
@@ -1879,7 +1879,7 @@ def print_test_json():
         "bold": 0,
         "align": 1
     }
-    
+
     # Add various text formats
     print_data["2"] = {
         "type": 0,
@@ -1888,7 +1888,7 @@ def print_test_json():
         "align": 0,
         "format": 0
     }
-    
+
     print_data["3"] = {
         "type": 0,
         "content": "Bold Text",
@@ -1896,7 +1896,7 @@ def print_test_json():
         "align": 0,
         "format": 0
     }
-    
+
     print_data["4"] = {
         "type": 0,
         "content": "Centered Text",
@@ -1904,7 +1904,7 @@ def print_test_json():
         "align": 1,
         "format": 0
     }
-    
+
     print_data["5"] = {
         "type": 0,
         "content": "Right Aligned",
@@ -1912,7 +1912,7 @@ def print_test_json():
         "align": 2,
         "format": 0
     }
-    
+
     # Add different formats
     print_data["6"] = {
         "type": 0,
@@ -1921,7 +1921,7 @@ def print_test_json():
         "align": 1,
         "format": 1
     }
-    
+
     print_data["7"] = {
         "type": 0,
         "content": "Double Size",
@@ -1929,7 +1929,7 @@ def print_test_json():
         "align": 1,
         "format": 2
     }
-    
+
     print_data["8"] = {
         "type": 0,
         "content": "Double Width",
@@ -1937,7 +1937,7 @@ def print_test_json():
         "align": 1,
         "format": 3
     }
-    
+
     print_data["9"] = {
         "type": 0,
         "content": "Small Font",
@@ -1945,39 +1945,34 @@ def print_test_json():
         "align": 1,
         "format": 4
     }
-    
-    # Add barcode
+
+    # Divider
     print_data["10"] = {
-        "type": 2,  # barcode
-        "value": "1234567890",
-        "width": 100,
-        "height": 50,
-        "align": 1
+        "type": 0,
+        "content": "-------------------------",
+        "bold": 0,
+        "align": 1,
+        "format": 0
     }
-    
-    # Add QR code
-    print_data["11"] = {
-        "type": 3,  # QR code
-        "value": "QMS Test Print",
-        "size": 40,
-        "align": 1
-    }
-    
-    # Add HTML
-    print_data["12"] = {
-        "type": 4,  # HTML Code
-        "content": "<center><span style=\"font-weight:bold; font-size:20px;\">HTML Content</span></center>"
-    }
-    
+
     # Add current date/time
     current_time = get_ist_time().strftime('%Y-%m-%d %H:%M:%S')
-    print_data["13"] = {
+    print_data["11"] = {
         "type": 0,
         "content": f"Printed: {current_time}",
         "bold": 0,
         "align": 1
     }
-    
+
+    # Final message
+    print_data["12"] = {
+        "type": 0,
+        "content": "Printer test complete",
+        "bold": 1,
+        "align": 1,
+        "format": 0
+    }
+
     return jsonify(print_data)
 
 @app.route('/thermal-print-help')

@@ -11,7 +11,7 @@
             <div class="card-body">
                 <h5>Setting up your thermal printer</h5>
                 <p>This system supports printing to Bluetooth/USB thermal printers using the "Bluetooth Print" app for Android.</p>
-                
+
                 <div class="alert alert-info">
                     <h6><i class="bi bi-1-circle me-2"></i>Step 1: Install the app</h6>
                     <p>Download and install the "Bluetooth Print" app from Google Play Store:</p>
@@ -19,7 +19,7 @@
                         <i class="bi bi-google-play me-1"></i> Download App
                     </a>
                 </div>
-                
+
                 <div class="alert alert-info">
                     <h6><i class="bi bi-2-circle me-2"></i>Step 2: Connect your printer</h6>
                     <p>Connect your thermal printer to your Android device:</p>
@@ -28,7 +28,7 @@
                         <li><strong>For USB printers:</strong> Connect using an OTG cable and enable USB connection in the app</li>
                     </ul>
                 </div>
-                
+
                 <div class="alert alert-info">
                     <h6><i class="bi bi-3-circle me-2"></i>Step 3: Enable Browser Print function</h6>
                     <p>Open the Bluetooth Print app and follow these steps:</p>
@@ -39,7 +39,7 @@
                     </ol>
                     <img src="https://via.placeholder.com/300x150" alt="Enable Browser Print Setting" class="img-fluid rounded mt-2">
                 </div>
-                
+
                 <div class="alert alert-info">
                     <h6><i class="bi bi-4-circle me-2"></i>Step 4: Test your setup</h6>
                     <p>Use our test page to ensure everything is working correctly:</p>
@@ -47,7 +47,7 @@
                         <i class="bi bi-printer me-1"></i> Go to Test Page
                     </a>
                 </div>
-                
+
                 <div class="alert alert-warning mt-4">
                     <h6><i class="bi bi-exclamation-triangle me-2"></i>Troubleshooting</h6>
                     <ul>
@@ -59,7 +59,13 @@
                         <li>Check printer connection in the Bluetooth Print app settings</li>
                     </ul>
                 </div>
-                
+
+                <div class="alert alert-info mt-4">
+                    <h6><i class="bi bi-info-circle me-2"></i>Text-Only Printing</h6>
+                    <p>For better compatibility with all thermal printers, this system now uses text-only printing without QR codes, barcodes, or images.</p>
+                    <p>This helps prevent printing errors and ensures your receipts print correctly on all supported devices.</p>
+                </div>
+
                 <div class="alert alert-secondary mt-4">
                     <h6><i class="bi bi-gear me-2"></i>Advanced Settings</h6>
                     <p>Thermal printers may have different capabilities. You can adjust these settings in the Bluetooth Print app:</p>
@@ -70,7 +76,7 @@
                         <li><strong>Print Speed:</strong> Higher speeds may reduce quality</li>
                     </ul>
                 </div>
-                
+
                 <div class="d-grid gap-2 mt-4">
                     <a href="{{ url_for('print_test') }}" class="btn btn-primary">
                         <i class="bi bi-printer me-1"></i> Test Printer Now
@@ -92,7 +98,7 @@
         margin-bottom: 12px;
         font-weight: bold;
     }
-    
+
     .img-fluid {
         max-width: 100%;
         height: auto;

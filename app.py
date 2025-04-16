@@ -1912,55 +1912,111 @@ def recover_token(token_id):
         return redirect(url_for('admin'))
     else:
         return redirect(url_for('employee_dashboard'))
+
 @app.route('/api/print-token/<int:token_id>')
 def print_token_json(token_id):
     token = Token.query.get_or_404(token_id)
-
     formatted_date = token.created_at.strftime('%Y-%m-%d %H:%M')
-
-    a = []
-
-    obj1 = {"type": 0, "content": "Token Receipt", "bold": 1, "align": 1, "format": 0}
-    a.append(obj1)
-
-    obj2 = {"type": 0, "content": " ", "bold": 0, "align": 0, "format": 0}
-    a.append(obj2)
-
-    obj3 = {"type": 0, "content": token.token_number, "bold": 1, "align": 1, "format": 2}
-    a.append(obj3)
-
-    obj4 = {"type": 0, "content": " ", "bold": 0, "align": 0, "format": 0}
-    a.append(obj4)
-
-    obj5 = {"type": 0, "content": "Name: " + token.customer_name, "bold": 0, "align": 0, "format": 0}
-    a.append(obj5)
-
-    obj6 = {"type": 0, "content": "Reason: " + token.visit_reason, "bold": 0, "align": 0, "format": 0}
-    a.append(obj6)
-
-    obj7 = {"type": 0, "content": "Phone: " + token.phone_number, "bold": 0, "align": 0, "format": 0}
-    a.append(obj7)
-
-    obj8 = {"type": 0, "content": "Time: " + formatted_date, "bold": 0, "align": 0, "format": 0}
-    a.append(obj8)
-
-    obj9 = {"type": 0, "content": "-------------------------", "bold": 0, "align": 1, "format": 0}
-    a.append(obj9)
-
-    obj10 = {"type": 0, "content": "Please wait for your", "bold": 0, "align": 1, "format": 0}
-    a.append(obj10)
-
-    obj11 = {"type": 0, "content": "number to be called", "bold": 0, "align": 1, "format": 0}
-    a.append(obj11)
-
-    obj12 = {"type": 0, "content": "Thank you for your patience!", "bold": 0, "align": 1, "format": 0}
-    a.append(obj12)
-
-    result = {}
-    for i, obj in enumerate(a):
-        result[str(i)] = obj
-
-    return jsonify(result)
+    
+    # Create an empty dictionary instead of an array
+    print_data = {}
+    
+    # Add each print item with string keys
+    print_data["0"] = {
+        "type": 0,  # text
+        "content": "Token Receipt",
+        "bold": 1,
+        "align": 1,  # center align
+        "format": 0  # normal format
+    }
+    
+    print_data["1"] = {
+        "type": 0,
+        "content": " ",  # empty line
+        "bold": 0,
+        "align": 0
+    }
+    
+    print_data["2"] = {
+        "type": 0,
+        "content": token.token_number,
+        "bold": 1,
+        "align": 1,  # center align
+        "format": 2   # double size
+    }
+    
+    print_data["3"] = {
+        "type": 0,
+        "content": " ",  # empty line
+        "bold": 0,
+        "align": 0
+    }
+    
+    print_data["4"] = {
+        "type": 0,
+        "content": "Name: " + token.customer_name,
+        "bold": 0,
+        "align": 0,
+        "format": 0
+    }
+    
+    print_data["5"] = {
+        "type": 0,
+        "content": "Reason: " + token.visit_reason,
+        "bold": 0,
+        "align": 0,
+        "format": 0
+    }
+    
+    print_data["6"] = {
+        "type": 0,
+        "content": "Phone: " + token.phone_number,
+        "bold": 0,
+        "align": 0,
+        "format": 0
+    }
+    
+    print_data["7"] = {
+        "type": 0,
+        "content": "Time: " + formatted_date,
+        "bold": 0,
+        "align": 0,
+        "format": 0
+    }
+    
+    print_data["8"] = {
+        "type": 0,
+        "content": "-------------------------",
+        "bold": 0,
+        "align": 1,
+        "format": 0
+    }
+    
+    print_data["9"] = {
+        "type": 0,
+        "content": "Please wait for your",
+        "bold": 0,
+        "align": 1,
+        "format": 0
+    }
+    
+    print_data["10"] = {
+        "type": 0,
+        "content": "number to be called",
+        "bold": 0,
+        "align": 1,
+        "format": 0
+    }
+    
+    print_data["11"] = {
+        "type": 0,
+        "content": "Thank you for your patience!",
+        "bold": 0,
+        "align": 1,
+        "format": 0
+    }
+    
+    return jsonify(print_data)
 
 @app.route('/print-test')
 def print_test():

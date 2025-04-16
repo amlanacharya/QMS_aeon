@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thermal Printer Test</title>
+    <title>Thermal Printer Text Test</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
@@ -28,37 +28,25 @@
 <body>
     <div class="container">
         <div class="jumbotron text-center">
-            <h1 class="display-4">Thermal Printer Test</h1>
-            <p class="lead">Test your Bluetooth/USB thermal printer with the Bluetooth Print app</p>
+            <h1 class="display-4">Thermal Printer Text Test</h1>
+            <p class="lead">Test your thermal printer text capabilities with the Bluetooth Print app</p>
             <hr class="my-4">
-            <p>This simple app allows you to test if your thermal printer is working correctly with the Bluetooth Print app.</p>
+            <p>This simple app allows you to test if your thermal printer's text formatting is working correctly.</p>
         </div>
         
-        <div class="row">
+        <div class="row justify-content-center">
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header bg-primary text-white">
-                        Test Print Pattern
+                        Text Print Test
                     </div>
                     <div class="card-body">
-                        <p>Print a test pattern with various text styles, barcode, and QR code.</p>
-                        <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-test" class="btn btn-primary">
-                            <i class="bi bi-printer"></i> Print Test Pattern
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-success text-white">
-                        Sample Token
-                    </div>
-                    <div class="card-body">
-                        <p>Print a sample token receipt as it would appear in the queue system.</p>
-                        <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-sample-token" class="btn btn-success">
-                            <i class="bi bi-receipt"></i> Print Sample Token
-                        </a>
+                        <p>Print a test pattern with various text styles and formatting options.</p>
+                        <div class="d-grid">
+                            <a href="my.bluetoothprint.scheme://{{ request.host_url }}api/print-test" class="btn btn-primary btn-lg">
+                                <i class="bi bi-printer"></i> Print Text Test
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -74,17 +62,44 @@
                     <li>Install the <a href="https://play.google.com/store/apps/details?id=mate.bluetoothprint" target="_blank">Bluetooth Print app</a> from Google Play Store</li>
                     <li>Connect your thermal printer to your Android device via Bluetooth or USB</li>
                     <li>Open the app and enable "Browser Print" function in the settings</li>
-                    <li>Click on one of the test buttons above</li>
+                    <li>Click on the test button above</li>
                 </ol>
                 <a href="{{ url_for('setup_guide') }}" class="btn btn-info text-white mt-2">
                     <i class="bi bi-info-circle"></i> Detailed Setup Guide
                 </a>
             </div>
         </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-success text-white">
+                Preview
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>What You'll See</h5>
+                        <p>The text test will print:</p>
+                        <ul>
+                            <li>Title with formatting</li>
+                            <li>Normal text sample</li>
+                            <li>Bold text sample</li>
+                            <li>Centered text alignment</li>
+                            <li>Large text formatting</li>
+                            <li>Current timestamp</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ url_for('print_test_page') }}" class="btn btn-outline-success">
+                            <i class="bi bi-eye"></i> View Test Preview
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <footer class="text-center mt-5">
-        <p class="text-muted">Thermal Printer Test App &copy; 2025</p>
+        <p class="text-muted">Thermal Printer Text Test App &copy; 2025</p>
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

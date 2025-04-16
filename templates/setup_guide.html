@@ -46,8 +46,8 @@
                         <h4>Thermal Printer Setup Guide</h4>
                     </div>
                     <div class="card-body">
-                        <h5>Setting up your thermal printer</h5>
-                        <p>This guide will help you set up your 58mm thermal printer with the Bluetooth Print app.</p>
+                        <h5>Setting up your thermal printer for text printing</h5>
+                        <p>This guide will help you set up your thermal printer with the Bluetooth Print app for text printing tests.</p>
                         
                         <div class="step">
                             <h5><span class="step-number">1</span>Install the Bluetooth Print app</h5>
@@ -100,19 +100,19 @@
                         </div>
                         
                         <div class="step">
-                            <h5><span class="step-number">4</span>Configure printer settings (for 58mm printer)</h5>
-                            <p>For best results with a 58mm printer, set these options in the app:</p>
+                            <h5><span class="step-number">4</span>Configure text settings (for 58mm printer)</h5>
+                            <p>For best results with text formatting, set these options in the app:</p>
                             <ul>
                                 <li><strong>Paper Width:</strong> Select 58mm</li>
-                                <li><strong>Print Density:</strong> Medium (adjust as needed)</li>
+                                <li><strong>Print Density:</strong> Medium (adjust as needed for text clarity)</li>
                                 <li><strong>Character Set:</strong> UTF-8 for international character support</li>
-                                <li><strong>Printer Type:</strong> ESC/POS (most common thermal printer type)</li>
+                                <li><strong>Text Mode:</strong> Enable rich text formatting support</li>
                             </ul>
                         </div>
                         
                         <div class="step">
                             <h5><span class="step-number">5</span>Test your setup</h5>
-                            <p>Use our test page to ensure everything is working correctly:</p>
+                            <p>Use our test page to verify text formatting is working correctly:</p>
                             <a href="{{ url_for('index') }}" class="btn btn-success">
                                 <i class="bi bi-printer me-1"></i> Go to Test Page
                             </a>
@@ -121,23 +121,23 @@
                         <div class="alert alert-warning mt-4">
                             <h6><i class="bi bi-exclamation-triangle me-2"></i>Troubleshooting</h6>
                             <ul>
+                                <li><strong>Text formatting not applying:</strong> Make sure rich text formatting is enabled in app settings</li>
+                                <li><strong>Text too small or large:</strong> Check paper width settings (should be 58mm)</li>
                                 <li><strong>Printer not detected:</strong> Make sure it's powered on and properly connected</li>
-                                <li><strong>App does not launch when clicking Print:</strong> Check if "Browser Print" is enabled in app settings</li>
+                                <li><strong>App does not launch when clicking Print:</strong> Check if "Browser Print" is enabled</li>
                                 <li><strong>No printing occurs:</strong> Verify printer selection in the app</li>
                                 <li><strong>Print quality issues:</strong> Adjust print density in app settings</li>
-                                <li><strong>Paper jams:</strong> Make sure you're using the correct paper width (58mm)</li>
-                                <li><strong>Connection issues:</strong> Try restarting both the app and printer</li>
                             </ul>
                         </div>
                         
                         <div class="alert alert-info mt-4">
-                            <h6><i class="bi bi-lightbulb me-2"></i>Tips for 58mm Thermal Printers</h6>
+                            <h6><i class="bi bi-lightbulb me-2"></i>Tips for Text Formatting</h6>
                             <ul>
-                                <li>Keep text lines under 32 characters to avoid word wrapping</li>
-                                <li>Limit the use of large font sizes as they may not fit the paper width</li>
-                                <li>Clean the printer head regularly for best print quality</li>
-                                <li>Store thermal paper away from heat and direct sunlight</li>
-                                <li>Make sure you're using proper thermal paper rolls (58mm width)</li>
+                                <li>Keep text lines under 32 characters for 58mm printers to avoid word wrapping</li>
+                                <li>Use centered text for titles and headings</li>
+                                <li>Bold text works best for emphasis rather than large text</li>
+                                <li>Some older printer models may have limited support for advanced text formatting</li>
+                                <li>Test with different font sizes to find the optimal readability for your printer</li>
                             </ul>
                         </div>
                         

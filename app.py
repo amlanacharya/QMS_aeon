@@ -1955,7 +1955,7 @@ def print_token_json(token_id):
     
     # Use jsonify the same way as your working function
     return jsonify(print_data)
-    
+
 @app.route('/api/print-test-simple')
 def print_test_simple():
     print_data = {
@@ -2120,5 +2120,25 @@ def print_token_static(token_id):
         }
     }
     return jsonify(print_data)
+@app.route('/api/print-exact-test')#will link in simple print test
+def print_exact_test():
+    # This matches EXACTLY the PHP example from the instructions
+    a = {
+        "0": {
+            "type": 0,
+            "content": "My Title",
+            "bold": 1,
+            "align": 2,
+            "format": 3
+        },
+        "1": {
+            "type": 0,
+            "content": " ",
+            "bold": 0,
+            "align": 0
+        }
+    }
+    
+    return jsonify(a)
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

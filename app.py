@@ -1915,27 +1915,47 @@ def recover_token(token_id):
 
 @app.route('/api/print-token/<int:token_id>')
 def print_token_json(token_id):
+    token = Token.query.get_or_404(token_id)
+    formatted_date = token.created_at.strftime('%Y-%m-%d %H:%M')
+    
+    # Create a simple dictionary using the same format as your working simple test
     print_data = {
         "0": {
             "type": 0,
-            "content": "Token Print",
+            "content": "Token Receipt",
             "bold": 1,
-            "align": 1,
-            "format": 0
+            "align": 1
         },
         "1": {
             "type": 0,
-            "content": "Token: " + str(token_id),
+            "content": token.token_number,
+            "bold": 1,
+            "align": 1,
+            "format": 2
+        },
+        "2": {
+            "type": 0,
+            "content": "Name: " + token.customer_name,
             "bold": 0,
-            "align": 0,
-            "format": 0
+            "align": 0
+        },
+        "3": {
+            "type": 0,
+            "content": "Reason: " + token.visit_reason,
+            "bold": 0,
+            "align": 0
+        },
+        "4": {
+            "type": 0,
+            "content": "Time: " + formatted_date,
+            "bold": 0,
+            "align": 0
         }
     }
     
-    response = jsonify(print_data)
-    # Explicitly set content type (though jsonify already does this)
-    response.headers['Content-Type'] = 'application/json'
-    return response
+    # Use jsonify the same way as your working function
+    return jsonify(print_data)
+    
 @app.route('/api/print-test-simple')
 def print_test_simple():
     print_data = {
@@ -2077,5 +2097,28 @@ def thermal_print_help():
 @app.route('/simple-print-test')
 def simple_print_test():
     return render_template('simple_print_test.html')
+@app.route('/api/print-token-static/<int:token_id>')
+def print_token_static(token_id):
+    print_data = {
+        "0": {
+            "type": 0,
+            "content": "Token Receipt",
+            "bold": 1,
+            "align": 1
+        },
+        "1": {
+            "type": 0,
+            "content": "T123",  # Hardcoded token number
+            "bold": 1,
+            "align": 1
+        },
+        "2": {
+            "type": 0,
+            "content": "Name: John Doe",  # Hardcoded name
+            "bold": 0,
+            "align": 0
+        }
+    }
+    return jsonify(print_data)
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

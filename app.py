@@ -1915,107 +1915,37 @@ def recover_token(token_id):
 
 @app.route('/api/print-token/<int:token_id>')
 def print_token_json(token_id):
-    token = Token.query.get_or_404(token_id)
-    formatted_date = token.created_at.strftime('%Y-%m-%d %H:%M')
-    
-    # Create an empty dictionary instead of an array
-    print_data = {}
-    
-    # Add each print item with string keys
-    print_data["0"] = {
-        "type": 0,  # text
-        "content": "Token Receipt",
-        "bold": 1,
-        "align": 1,  # center align
-        "format": 0  # normal format
+    print_data = {
+        "0": {
+            "type": 0,
+            "content": "Token Print",
+            "bold": 1,
+            "align": 1,
+            "format": 0
+        },
+        "1": {
+            "type": 0,
+            "content": "Token: " + str(token_id),
+            "bold": 0,
+            "align": 0,
+            "format": 0
+        }
     }
     
-    print_data["1"] = {
-        "type": 0,
-        "content": " ",  # empty line
-        "bold": 0,
-        "align": 0
+    response = jsonify(print_data)
+    # Explicitly set content type (though jsonify already does this)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+@app.route('/api/print-test-simple')
+def print_test_simple():
+    print_data = {
+        "0": {
+            "type": 0,
+            "content": "Simple Test",
+            "bold": 1,
+            "align": 1
+        }
     }
-    
-    print_data["2"] = {
-        "type": 0,
-        "content": token.token_number,
-        "bold": 1,
-        "align": 1,  # center align
-        "format": 2   # double size
-    }
-    
-    print_data["3"] = {
-        "type": 0,
-        "content": " ",  # empty line
-        "bold": 0,
-        "align": 0
-    }
-    
-    print_data["4"] = {
-        "type": 0,
-        "content": "Name: " + token.customer_name,
-        "bold": 0,
-        "align": 0,
-        "format": 0
-    }
-    
-    print_data["5"] = {
-        "type": 0,
-        "content": "Reason: " + token.visit_reason,
-        "bold": 0,
-        "align": 0,
-        "format": 0
-    }
-    
-    print_data["6"] = {
-        "type": 0,
-        "content": "Phone: " + token.phone_number,
-        "bold": 0,
-        "align": 0,
-        "format": 0
-    }
-    
-    print_data["7"] = {
-        "type": 0,
-        "content": "Time: " + formatted_date,
-        "bold": 0,
-        "align": 0,
-        "format": 0
-    }
-    
-    print_data["8"] = {
-        "type": 0,
-        "content": "-------------------------",
-        "bold": 0,
-        "align": 1,
-        "format": 0
-    }
-    
-    print_data["9"] = {
-        "type": 0,
-        "content": "Please wait for your",
-        "bold": 0,
-        "align": 1,
-        "format": 0
-    }
-    
-    print_data["10"] = {
-        "type": 0,
-        "content": "number to be called",
-        "bold": 0,
-        "align": 1,
-        "format": 0
-    }
-    
-    print_data["11"] = {
-        "type": 0,
-        "content": "Thank you for your patience!",
-        "bold": 0,
-        "align": 1,
-        "format": 0
-    }
-    
     return jsonify(print_data)
 
 @app.route('/print-test')
@@ -2144,5 +2074,8 @@ def thermal_print_help():
         flash('Thermal printing is currently disabled by the administrator', 'warning')
         return redirect(url_for('index'))
     return render_template('thermal_print_help.html')
+@app.route('/simple-print-test')
+def simple_print_test():
+    return render_template('simple_print_test.html')
 if __name__ == '__main__':
     socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

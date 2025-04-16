@@ -91,11 +91,20 @@ sudo -u qms_user /opt/qms/venv/bin/python migrate_passwords.py
 
 This script will convert all plaintext passwords to secure bcrypt hashes.
 
-### 7. Configure Gunicorn
+### 7. Choose a Deployment Method
+
+There are several ways to deploy the QMS application. Choose the method that best fits your requirements:
+
+#### Option 7.1: Deploy with Nginx + Gunicorn (Recommended for Production)
+
+This option uses Nginx as a reverse proxy and Gunicorn as the WSGI server, which is ideal for production environments.
+
+##### 7.1.1. Configure Gunicorn
 
 Copy the gunicorn.conf.py file to the application directory:
 
 ```bash
+sudo mkdir -p /etc/gunicorn
 sudo cp /opt/qms/gunicorn.conf.py /etc/gunicorn/qms.conf
 ```
 
@@ -108,7 +117,7 @@ sudo chown -R www-data:www-data /var/log/gunicorn
 sudo chown -R www-data:www-data /var/run/gunicorn
 ```
 
-### 8. Configure Systemd Service
+##### 7.1.2. Configure Systemd Service
 
 Copy the systemd service file:
 
@@ -130,7 +139,13 @@ sudo systemctl enable qms
 sudo systemctl start qms
 ```
 
-### 9. Configure Nginx
+##### 7.1.3. Configure Nginx
+
+Install Nginx if not already installed:
+
+```bash
+sudo apt install -y nginx
+```
 
 Copy the Nginx configuration file:
 
@@ -162,7 +177,119 @@ Restart Nginx:
 sudo systemctl restart nginx
 ```
 
-### 10. Set Up Firewall (if needed)
+#### Option 7.2: Deploy with Flask's Built-in Server (Simple Setup)
+
+This option uses Flask's built-in server with a systemd service. It's simpler but less robust than the Nginx+Gunicorn option.
+
+##### 7.2.1. Create a Simple Systemd Service
+
+Create a systemd service file:
+
+```bash
+sudo nano /etc/systemd/system/qms.service
+```
+
+Add the following content:
+
+```
+[Unit]
+Description=QMS Application Service
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/qms
+Environment="PATH=/opt/qms/venv/bin"
+Environment="PRODUCTION=True"
+Environment="SECRET_KEY=change_this_to_a_secure_random_string"
+Environment="ADMIN_PASSWORD=change_this_to_a_secure_admin_password"
+ExecStart=/opt/qms/venv/bin/python app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable qms
+sudo systemctl start qms
+```
+
+#### Option 7.3: Deploy with uWSGI (Alternative to Gunicorn)
+
+If you prefer uWSGI over Gunicorn, follow these steps:
+
+##### 7.3.1. Install uWSGI
+
+```bash
+sudo -u qms_user /opt/qms/venv/bin/pip install uwsgi
+```
+
+##### 7.3.2. Create a uWSGI Configuration File
+
+```bash
+sudo nano /opt/qms/uwsgi.ini
+```
+
+Add the following content:
+
+```ini
+[uwsgi]
+module = wsgi:application
+
+master = true
+processes = 5
+
+socket = /tmp/qms.sock
+chmod-socket = 660
+chown-socket = www-data:www-data
+
+vacuum = true
+die-on-term = true
+```
+
+##### 7.3.3. Create a Systemd Service for uWSGI
+
+```bash
+sudo nano /etc/systemd/system/qms.service
+```
+
+Add the following content:
+
+```
+[Unit]
+Description=uWSGI instance to serve QMS
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/qms
+Environment="PATH=/opt/qms/venv/bin"
+Environment="PRODUCTION=True"
+Environment="SECRET_KEY=change_this_to_a_secure_random_string"
+Environment="ADMIN_PASSWORD=change_this_to_a_secure_admin_password"
+ExecStart=/opt/qms/venv/bin/uwsgi --ini uwsgi.ini
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable qms
+sudo systemctl start qms
+```
+
+Then configure Nginx as described in Option 7.1.3, but modify the configuration to use the uWSGI socket.
+
+### 8. Set Up Firewall (if needed)
 
 If you're using UFW (Uncomplicated Firewall):
 
@@ -171,7 +298,7 @@ sudo ufw allow 'Nginx Full'
 sudo ufw reload
 ```
 
-### 11. Set Up SSL/TLS with Let's Encrypt (Recommended)
+### 9. Set Up SSL/TLS with Let's Encrypt (Recommended)
 
 Install Certbot:
 

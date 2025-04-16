@@ -1,0 +1,17 @@
+[Unit]
+Description=QMS Application Service (Simple)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/qms
+Environment="PATH=/opt/qms/venv/bin"
+Environment="PRODUCTION=True"
+Environment="SECRET_KEY=change_this_to_a_secure_random_string"
+Environment="ADMIN_PASSWORD=change_this_to_a_secure_admin_password"
+ExecStart=/opt/qms/venv/bin/python app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

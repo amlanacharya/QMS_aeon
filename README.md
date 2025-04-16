@@ -35,7 +35,7 @@ A comprehensive web-based Queue Management System designed to streamline custome
 - **Backend**: Flask (Python web framework)
 - **Database**: SQLAlchemy with SQLite
 - **Real-time Updates**: Flask-SocketIO
-- **Frontend**: 
+- **Frontend**:
   - HTML, CSS, JavaScript
   - Bootstrap 5
   - Socket.IO client
@@ -53,10 +53,10 @@ A comprehensive web-based Queue Management System designed to streamline custome
 2. Create and activate a virtual environment:
    ```
    python -m venv venv
-   
+
    # On Windows
    venv\Scripts\activate
-   
+
    # On macOS/Linux
    source venv/bin/activate
    ```
@@ -127,12 +127,26 @@ A comprehensive web-based Queue Management System designed to streamline custome
 
 ## Deployment
 
-This application is designed to be deployed on PythonAnywhere or similar hosting services. For production deployment:
+This application can be deployed on various platforms:
 
-1. Set a secure `SECRET_KEY` in `app.py`
-2. Configure the database URI for production
-3. Disable debug mode
-4. Consider using a production-ready web server
+### Linux Server Deployment
+
+For deploying on a Linux server with Nginx, Gunicorn, and Systemd:
+
+1. See the detailed instructions in [LINUX_DEPLOYMENT.md](LINUX_DEPLOYMENT.md)
+2. Use the provided configuration files:
+   - `nginx-qms.conf`: Nginx server configuration
+   - `qms.service`: Systemd service file
+   - `gunicorn.conf.py`: Gunicorn configuration
+   - `deploy.sh`: Deployment script
+
+### General Deployment Considerations
+
+1. Set a secure `SECRET_KEY` through environment variables
+2. Configure the database URI for production if needed
+3. Set `PRODUCTION=True` in environment variables
+4. Use a production-ready web server (Gunicorn with Nginx recommended)
+5. Set up SSL/TLS for secure connections
 
 ## License
 

@@ -2,6 +2,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
+from flask_bcrypt import Bcrypt
 from datetime import datetime, timezone, timedelta
 import os
 import pandas as pd
@@ -9,9 +10,17 @@ import io
 import json
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'SECRETPASS'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tokens.db'
+
+# Use environment variable for SECRET_KEY if available, otherwise use a secure default
+# In production, set this environment variable to a secure random value
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a8c7ef9d2b4e6f8a0c2e4d6b8a0c2e4d6b8a0c2e4d6b8a0c2e4d6b')
+
+# Configure database URI - use environment variable if available
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///tokens.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Configure production settings
+app.config['PRODUCTION'] = os.environ.get('PRODUCTION', 'False').lower() == 'true'
 
 # Define IST timezone (UTC+5:30)
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -22,6 +31,9 @@ def get_ist_time():
 
 # Initialize Socket.IO
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Initialize Bcrypt for password hashing
+bcrypt = Bcrypt(app)
 
 # Socket.IO event handlers
 @socketio.on('connect')
@@ -239,11 +251,19 @@ class Employee(db.Model):
     employee_id = db.Column(db.String(20), nullable=False, unique=True)  # Employee ID or username
     name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(50))  # e.g., 'admin', 'operator', etc.
-    password = db.Column(db.String(100), nullable=False)  # Store hashed password in production
+    password = db.Column(db.String(100), nullable=False)  # Stores hashed password
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=get_ist_time)
     last_login = db.Column(db.DateTime, nullable=True)
     is_on_duty = db.Column(db.Boolean, default=False)  # Whether employee is currently on duty
+
+    # Method to set the password (hashes it)
+    def set_password(self, password):
+        self.password = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    # Method to check the password
+    def check_password(self, password):
+        return bcrypt.check_password_hash(self.password, password)
 
     # Statistics
     tokens_served = db.Column(db.Integer, default=0)
@@ -533,8 +553,10 @@ def admin():
 
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
-    # In a real app, use proper auth
-    if request.form.get('password') == 'admin123':
+    # Use environment variable for admin password if available
+    admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+
+    if request.form.get('password') == admin_password:
         session['is_admin'] = True
         flash('Admin access granted', 'success')
         return redirect(url_for('admin'))
@@ -1503,9 +1525,10 @@ def add_employee():
         employee_id=employee_id,
         name=name,
         role=role,
-        password=password,
         is_active=is_active
     )
+    # Set password (this will hash it)
+    new_employee.set_password(password)
 
     db.session.add(new_employee)
     db.session.commit()
@@ -1547,7 +1570,7 @@ def update_employee(employee_id):
     # Only update password if provided
     password = request.form.get('password')
     if password and password.strip():
-        employee.password = password
+        employee.set_password(password)
 
     db.session.commit()
 
@@ -1580,7 +1603,7 @@ def employee_login_process():
 
     employee = Employee.query.filter_by(employee_id=employee_id).first()
 
-    if employee and employee.password == password and employee.is_active:
+    if employee and employee.check_password(password) and employee.is_active:
         session['employee_id'] = employee.id
         session['employee_name'] = employee.name
         session['employee_role'] = employee.role
@@ -1917,7 +1940,7 @@ def recover_token(token_id):
 def print_token_json(token_id):
     token = Token.query.get_or_404(token_id)
     formatted_date = token.created_at.strftime('%Y-%m-%d %H:%M')
-    
+
     # Create a simple dictionary using the same format as your working simple test
     print_data = {
         "0": {
@@ -1952,7 +1975,7 @@ def print_token_json(token_id):
             "align": 0
         }
     }
-    
+
     # Use jsonify the same way as your working function
     return jsonify(print_data)
 
@@ -2138,7 +2161,14 @@ def print_exact_test():
             "align": 0
         }
     }
-    
+
     return jsonify(a)
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    # Only use debug mode and unsafe werkzeug in development
+    debug_mode = not app.config['PRODUCTION']
+
+    if debug_mode:
+        socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    else:
+        # Production mode - no debug, no unsafe werkzeug
+        socketio.run(app, debug=False)

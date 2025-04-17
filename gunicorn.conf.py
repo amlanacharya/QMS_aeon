@@ -1,16 +1,16 @@
-# Gunicorn configuration file for QMS application
+# Gunicorn config
 
-# Server socket
+# Socket
 bind = "0.0.0.0:5000"
 backlog = 2048
 
-# Worker processes
-worker_class = "eventlet"  # Required for SocketIO
-workers = 1  # For SocketIO, we need only one worker
+# Workers
+worker_class = "eventlet"  # For SocketIO
+workers = 1  # Single worker for SocketIO
 threads = 4
 timeout = 120
 
-# Server mechanics
+# Server
 daemon = False
 pidfile = "/var/run/gunicorn/qms.pid"
 umask = 0
@@ -22,10 +22,10 @@ errorlog = "/var/log/gunicorn/qms-error.log"
 accesslog = "/var/log/gunicorn/qms-access.log"
 loglevel = "info"
 
-# Process naming
+# Process
 proc_name = "qms"
 
-# Server hooks
+# Hooks
 def on_starting(server):
     server.log.info("Starting QMS application")
 

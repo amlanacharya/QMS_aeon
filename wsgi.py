@@ -1,13 +1,12 @@
 import sys
 import os
 
-# Add the application directory to the Python path
+# Add app directory to path
 path = os.path.dirname(os.path.abspath(__file__))
 if path not in sys.path:
     sys.path.append(path)
 
-# Import the Flask application
+# Import Flask app
 from app import app as application
 
-# PythonAnywhere uses WSGI to serve the application
-# This file is the entry point for the WSGI server
+# WSGI entry point

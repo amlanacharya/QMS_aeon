@@ -1,46 +1,43 @@
-"""
-Test script for password hashing functionality.
-This script tests the bcrypt password hashing implementation.
-"""
+"""Password hashing test script"""
 
 from flask import Flask
 from flask_bcrypt import Bcrypt
 import sys
 
-# Create a simple Flask app for testing
+# Test app
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
 
 def test_password_hashing():
-    """Test the password hashing and verification functionality."""
+    """Test password hashing and verification"""
     print("Testing password hashing functionality...")
-    
-    # Test password
+
+    # Test data
     password = "test_password123"
-    
-    # Generate a hash
+
+    # Generate hash
     password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-    
+
     print(f"Original password: {password}")
     print(f"Hashed password: {password_hash}")
-    
-    # Verify the hash
+
+    # Verify hash
     is_valid = bcrypt.check_password_hash(password_hash, password)
     print(f"Password verification (should be True): {is_valid}")
-    
-    # Try an incorrect password
+
+    # Test incorrect password
     is_valid = bcrypt.check_password_hash(password_hash, "wrong_password")
     print(f"Incorrect password verification (should be False): {is_valid}")
-    
-    # Generate another hash for the same password
+
+    # Test hash uniqueness
     another_hash = bcrypt.generate_password_hash(password).decode('utf-8')
     print(f"Another hash for the same password: {another_hash}")
     print(f"Are the hashes different? {password_hash != another_hash}")
-    
-    # Verify the second hash
+
+    # Verify second hash
     is_valid = bcrypt.check_password_hash(another_hash, password)
     print(f"Second hash verification (should be True): {is_valid}")
-    
+
     print("\nAll tests completed successfully!")
     return True
 

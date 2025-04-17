@@ -1,4 +1,4 @@
-# app.py
+# Main application file
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
@@ -11,43 +11,42 @@ import json
 
 app = Flask(__name__)
 
-# Use environment variable for SECRET_KEY if available, otherwise use a secure default
-# In production, set this environment variable to a secure random value
+# Configure secret key
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a8c7ef9d2b4e6f8a0c2e4d6b8a0c2e4d6b8a0c2e4d6b8a0c2e4d6b')
 
-# Configure database URI - use environment variable if available
+# Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///tokens.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configure production settings
+# Production flag
 app.config['PRODUCTION'] = os.environ.get('PRODUCTION', 'False').lower() == 'true'
 
-# Define IST timezone (UTC+5:30)
+# IST timezone
 IST = timezone(timedelta(hours=5, minutes=30))
 
-# Function to get current time in IST
+# Get IST time
 def get_ist_time():
     return datetime.now(timezone.utc).astimezone(IST)
 
-# Initialize Socket.IO
+# Socket.IO init
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Initialize Bcrypt for password hashing
+# Bcrypt init
 bcrypt = Bcrypt(app)
 
-# Socket.IO event handlers
+# Socket events
 @socketio.on('connect')
 def handle_connect():
     print('Client connected')
-    # Send current token and queue status to the newly connected client
+    # Send status to client
     current_token = get_current_token()
     next_token = get_next_token()
     settings = get_settings()
 
-    # Get recently skipped tokens
+    # Get skipped tokens
     skipped_tokens = Token.query.filter_by(status='SKIPPED').order_by(Token.last_skipped_at.desc()).limit(10).all()
 
-    # Convert token objects to dictionaries for JSON serialization
+    # Convert to JSON
     current_token_data = None
     if current_token:
         current_token_data = {
@@ -81,16 +80,16 @@ def handle_connect():
 def handle_disconnect():
     print('Client disconnected')
 
-# Helper function to broadcast token updates
+# Broadcast updates
 def broadcast_token_update():
     current_token = get_current_token()
     next_token = get_next_token()
     settings = get_settings()
 
-    # Get recently skipped tokens
+    # Get skipped tokens
     skipped_tokens = Token.query.filter_by(status='SKIPPED').order_by(Token.last_skipped_at.desc()).limit(10).all()
 
-    # Convert token objects to dictionaries for JSON serialization
+    # Convert to JSON
     current_token_data = None
     if current_token:
         current_token_data = {
@@ -120,7 +119,7 @@ def broadcast_token_update():
         'skipped_tokens': skipped_tokens_data
     })
 
-# Custom context processors
+# Context processors
 @app.context_processor
 def inject_now():
     def now():
@@ -141,26 +140,26 @@ class Token(db.Model):
     __tablename__ = 'tokens'
     id = db.Column(db.Integer, primary_key=True)
     token_number = db.Column(db.String(10), nullable=False)
-    visit_reason = db.Column(db.String(50), nullable=False)  # Changed from application_number
-    custom_reason = db.Column(db.String(100))  # New field for custom reason
+    visit_reason = db.Column(db.String(50), nullable=False)
+    custom_reason = db.Column(db.String(100))
     phone_number = db.Column(db.String(20))
     customer_name = db.Column(db.String(100))
     status = db.Column(db.String(20), default='PENDING')
     created_at = db.Column(db.DateTime, default=get_ist_time)
-    # New fields for recall tracking
+    # Recall tracking
     recall_count = db.Column(db.Integer, default=0)
     last_recalled_at = db.Column(db.DateTime, nullable=True)
-    # New fields for service time tracking
+    # Service time
     served_at = db.Column(db.DateTime, nullable=True)
-    service_duration = db.Column(db.Integer, nullable=True)  # Duration in seconds
-    # New fields for enhanced analytics
-    skip_count = db.Column(db.Integer, default=0)  # Track number of times skipped
+    service_duration = db.Column(db.Integer, nullable=True)
+    # Analytics fields
+    skip_count = db.Column(db.Integer, default=0)
     last_skipped_at = db.Column(db.DateTime, nullable=True)
-    completed_at = db.Column(db.DateTime, nullable=True)  # When service was completed
-    resolution_outcome = db.Column(db.String(50), nullable=True)  # e.g., 'RESOLVED', 'REFERRED', etc.
-    staff_id = db.Column(db.String(50), nullable=True)  # ID of staff who served the token
-    complexity_level = db.Column(db.Integer, nullable=True)  # 1-5 rating of case complexity
-    customer_feedback = db.Column(db.Integer, nullable=True)  # 1-5 rating from customer
+    completed_at = db.Column(db.DateTime, nullable=True)
+    resolution_outcome = db.Column(db.String(50), nullable=True)
+    staff_id = db.Column(db.String(50), nullable=True)
+    complexity_level = db.Column(db.Integer, nullable=True)
+    customer_feedback = db.Column(db.Integer, nullable=True)
     recovery_time = db.Column(db.Integer, nullable=True)
     previous_status = db.Column(db.String(20), nullable=True)
 
@@ -171,28 +170,20 @@ class Token(db.Model):
         if not self.served_at:
             return None
 
-        # Handle timezone-aware and naive datetime comparison
         if self.created_at.tzinfo is None and self.served_at.tzinfo is not None:
-            # created_at is naive, served_at is aware
             served_at_naive = self.served_at.replace(tzinfo=None)
             delta = served_at_naive - self.created_at
         elif self.created_at.tzinfo is not None and self.served_at.tzinfo is None:
-            # created_at is aware, served_at is naive
             created_at_naive = self.created_at.replace(tzinfo=None)
             delta = self.served_at - created_at_naive
         else:
-            # Both are either naive or aware
             delta = self.served_at - self.created_at
 
-        # Calculate total waiting time in seconds
         total_seconds = delta.total_seconds()
 
-        # Subtract time spent in SKIPPED state if applicable
         if self.skip_count > 0 and self.recovery_time:
-            # Subtract the recovery time (time between last skip and being served)
             total_seconds -= self.recovery_time
 
-        # Ensure we don't return negative values
         return max(0, int(total_seconds / 60))
 
     @property
@@ -201,75 +192,69 @@ class Token(db.Model):
         if not self.completed_at:
             return None
 
-        # Handle timezone-aware and naive datetime comparison
         if self.created_at.tzinfo is None and self.completed_at.tzinfo is not None:
-            # created_at is naive, completed_at is aware
             completed_at_naive = self.completed_at.replace(tzinfo=None)
             delta = completed_at_naive - self.created_at
         elif self.created_at.tzinfo is not None and self.completed_at.tzinfo is None:
-            # created_at is aware, completed_at is naive
             created_at_naive = self.created_at.replace(tzinfo=None)
             delta = self.completed_at - created_at_naive
         else:
-            # Both are either naive or aware
             delta = self.completed_at - self.created_at
 
         return int(delta.total_seconds() / 60)
 
     @property
     def day_of_week(self):
-        """Get the day of week when token was created"""
         return self.created_at.strftime('%A')
 
     @property
     def hour_of_day(self):
-        """Get the hour of day when token was created"""
         return self.created_at.hour
 
-# System settings model
+# Settings model
 class Settings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     queue_active = db.Column(db.Boolean, default=True)
     current_token_id = db.Column(db.Integer, default=0)
     last_token_number = db.Column(db.Integer, default=0)
-    use_thermal_printer = db.Column(db.Boolean, default=True)  # True for thermal printer, False for standard printer
+    use_thermal_printer = db.Column(db.Boolean, default=True)
 
-# Visit reason model
+# Reason model
 class Reason(db.Model):
     __tablename__ = 'reasons'
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), nullable=False, unique=True)  # e.g., 'reason1'
-    description = db.Column(db.String(100), nullable=False)  # e.g., 'Reason 1'
+    code = db.Column(db.String(20), nullable=False, unique=True)
+    description = db.Column(db.String(100), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=get_ist_time)
     updated_at = db.Column(db.DateTime, default=get_ist_time, onupdate=get_ist_time)
 
-# Employee model for tracking who serves which token
+# Employee model
 class Employee(db.Model):
     __tablename__ = 'employee'
     id = db.Column(db.Integer, primary_key=True)
-    employee_id = db.Column(db.String(20), nullable=False, unique=True)  # Employee ID or username
+    employee_id = db.Column(db.String(20), nullable=False, unique=True)
     name = db.Column(db.String(100), nullable=False)
-    role = db.Column(db.String(50))  # e.g., 'admin', 'operator', etc.
-    password = db.Column(db.String(100), nullable=False)  # Stores hashed password
+    role = db.Column(db.String(50))
+    password = db.Column(db.String(100), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=get_ist_time)
     last_login = db.Column(db.DateTime, nullable=True)
-    is_on_duty = db.Column(db.Boolean, default=False)  # Whether employee is currently on duty
+    is_on_duty = db.Column(db.Boolean, default=False)
 
-    # Method to set the password (hashes it)
+    # Set password
     def set_password(self, password):
         self.password = bcrypt.generate_password_hash(password).decode('utf-8')
 
-    # Method to check the password
+    # Check password
     def check_password(self, password):
         return bcrypt.check_password_hash(self.password, password)
 
-    # Statistics
+    # Stats
     tokens_served = db.Column(db.Integer, default=0)
-    avg_service_time = db.Column(db.Float, default=0.0)  # in minutes
+    avg_service_time = db.Column(db.Float, default=0.0)
 
-# Token status change history model
+# Status change model
 class TokenStatusChange(db.Model):
     __tablename__ = 'token_status_changes'
     id = db.Column(db.Integer, primary_key=True)
@@ -277,17 +262,17 @@ class TokenStatusChange(db.Model):
     old_status = db.Column(db.String(20), nullable=False)
     new_status = db.Column(db.String(20), nullable=False)
     changed_at = db.Column(db.DateTime, default=get_ist_time)
-    changed_by = db.Column(db.String(50), nullable=True)  # Employee ID who made the change
+    changed_by = db.Column(db.String(50), nullable=True)
 
-# Create tables if they don't exist
+# Init database
 with app.app_context():
     db.create_all()
-    # Initialize settings if not present
+    # Init settings
     if not Settings.query.first():
         db.session.add(Settings(queue_active=True, current_token_id=0, last_token_number=0, use_thermal_printer=True))
         db.session.commit()
 
-    # Initialize default reasons if not present
+    # Init reasons
     if not Reason.query.first():
         default_reasons = [
             Reason(code='reason1', description='Reason 1'),
@@ -336,13 +321,13 @@ def generate_token_number():
     db.session.commit()
     return f"T{new_token_number:03d}"
 
-# Authentication middleware
+# Auth check
 def is_admin():
-    # Check if user is explicitly marked as admin
+    # Check admin flag
     if session.get('is_admin', False):
         return True
 
-    # Check if user is an employee with admin role
+    # Check employee role
     if 'employee_id' in session and 'employee_role' in session:
         if session['employee_role'] == 'admin':
             return True
@@ -375,7 +360,7 @@ def generate_token():
     phone_number = request.form.get('phone_number')
     customer_name = request.form.get('customer_name')
 
-    # Combine reason if it's "other"
+    # Handle custom reason
     final_reason = f"Other: {custom_reason}" if visit_reason == 'other' else visit_reason
 
     token_number = generate_token_number()
@@ -418,13 +403,12 @@ def next_token():
             current_token.served_at = get_ist_time()
             # Calculate service duration in seconds
             if current_token.created_at:
-                # Make sure both datetimes are comparable (either both naive or both aware)
-                # If created_at is naive (no timezone info), make served_at naive too
+                # Handle timezone differences
                 if current_token.created_at.tzinfo is None:
                     served_at_naive = current_token.served_at.replace(tzinfo=None)
                     delta = served_at_naive - current_token.created_at
                 else:
-                    # Both have timezone info
+
                     delta = current_token.served_at - current_token.created_at
 
                 current_token.service_duration = int(delta.total_seconds())
@@ -433,12 +417,12 @@ def next_token():
         settings.current_token_id = next_token.id
         db.session.commit()
 
-        # Broadcast token update to all connected clients
+        # Broadcast update
         broadcast_token_update()
     else:
         flash('No more pending tokens in queue', 'info')
 
-    # Redirect based on user type
+    # Redirect
     if is_admin():
         return redirect(url_for('admin'))
     else:
@@ -452,25 +436,25 @@ def recall_token():
 
     current_token = get_current_token()
     if current_token:
-        # Add recall count to track number of recalls
+        # Update recall count
         if not hasattr(current_token, 'recall_count'):
             current_token.recall_count = 0
         current_token.recall_count += 1
 
-        # Add last recall time
+        # Update recall time
         current_token.last_recalled_at = get_ist_time()
 
         db.session.commit()
 
-        # Broadcast token update to all connected clients
+        # Broadcast update
         broadcast_token_update()
 
-        # Flash message with recall count
+
         flash(f'Recalling token {current_token.token_number} (Recall #{current_token.recall_count})', 'warning')
     else:
         flash('No active token to recall', 'error')
 
-    # Redirect based on user type
+    # Redirect
     if is_admin():
         return redirect(url_for('admin'))
     else:
@@ -1228,28 +1212,28 @@ def delete_token(token_id):
 
     token = Token.query.get_or_404(token_id)
 
-    # Only allow deletion of pending tokens
+    # Check token status
     if token.status != 'PENDING':
         flash('Only pending tokens can be deleted', 'error')
         return redirect(url_for('admin'))
 
-    # Store token number for message
+    # Get token number
     token_number = token.token_number
 
-    # Check if this token is the next token that would be served
+    # Check if next token
     next_token = get_next_token()
     is_next_token = next_token and next_token.id == token.id
 
-    # Delete the token
+    # Delete token
     db.session.delete(token)
     db.session.commit()
 
 
     if is_next_token:
-        # Get the new next token after deletion
+        # Get new next token
         new_next_token = get_next_token()
 
-        # If there's no current token but there is a new next token, make it the current token
+        # Update current token
         settings = get_settings()
         if settings.current_token_id == 0 and new_next_token:
             settings.current_token_id = new_next_token.id
@@ -1265,7 +1249,7 @@ def delete_token(token_id):
     else:
         return redirect(url_for('employee_dashboard'))
 
-# Reason Management Routes
+# Reason routes
 @app.route('/manage-reasons')
 def manage_reasons():
     if not is_admin() and 'employee_id' not in session:
@@ -1286,7 +1270,7 @@ def add_reason():
         description = request.form.get('description')
         is_active = request.form.get('is_active') == 'on'
 
-        # Check if code already exists
+        # Check for duplicates
         existing_reason = Reason.query.filter_by(code=code).first()
         if existing_reason:
             flash(f'Reason code "{code}" already exists', 'error')
@@ -1314,7 +1298,7 @@ def edit_reason(reason_id):
         description = request.form.get('description')
         is_active = request.form.get('is_active') == 'on'
 
-        # Check if code already exists and it's not this reason's code
+        # Check for duplicates
         existing_reason = Reason.query.filter_by(code=code).first()
         if existing_reason and existing_reason.id != reason_id:
             flash(f'Reason code "{code}" already exists', 'error')
@@ -1339,7 +1323,7 @@ def delete_reason(reason_id):
 
     reason = Reason.query.get_or_404(reason_id)
 
-    # Check if this reason is being used by any tokens
+    # Check for dependencies
     tokens_using_reason = Token.query.filter(Token.visit_reason.like(f'{reason.code}%')).count()
     if tokens_using_reason > 0:
         flash(f'Cannot delete reason "{reason.description}" as it is used by {tokens_using_reason} tokens', 'error')
@@ -1351,49 +1335,49 @@ def delete_reason(reason_id):
     flash(f'Reason "{reason.description}" deleted successfully', 'success')
     return redirect(url_for('manage_reasons'))
 
-# Redirect legacy analytics route to enhanced analytics
+# Analytics redirect
 @app.route('/service-analytics')
 def service_analytics():
     return redirect(url_for('enhanced_analytics'))
 
-#route for Enchanced Analytics
+# Enhanced analytics
 @app.route('/enhanced-analytics')
 def enhanced_analytics():
     if not is_admin() and 'employee_id' not in session:
         flash('Access denied', 'error')
         return redirect(url_for('index'))
 
-    # Get all tokens
+    # Get tokens
     all_tokens = Token.query.all()
     served_tokens = [t for t in all_tokens if t.status == 'SERVED' and t.served_at is not None]
     skipped_tokens = [t for t in all_tokens if t.status == 'SKIPPED' or t.skip_count > 0]
     pending_tokens = [t for t in all_tokens if t.status == 'PENDING']
 
-    # Get all employees
+    # Get employees
     staff_members = Employee.query.all()
 
-    # Basic counts
+    # Count tokens
     total_tokens = len(all_tokens)
     total_served = len(served_tokens)
     total_skipped = len(skipped_tokens)
     total_pending = len(pending_tokens)
-    # Get tokens that were skipped but later served
+    # Get recovered tokens
     skipped_then_served = []
     for token in served_tokens:
         if token.skip_count > 0:
             skipped_then_served.append(token)
-    # Calculate recovery metrics
+    # Recovery metrics
     total_recovered = len(skipped_then_served)
     recovery_rate = (total_recovered / total_skipped * 100) if total_skipped > 0 else 0
-    # Calculate average recovery time
+    # Avg recovery time
     avg_recovery_time = sum(token.recovery_time or 0 for token in skipped_then_served) / total_recovered if total_recovered > 0 else 0
 
-    # Calculate service metrics
+    # Service metrics
     if total_served > 0:
-        # Use the waiting_time property which now handles timezone differences
+        # Calculate averages
         avg_waiting_time = sum(token.waiting_time or 0 for token in served_tokens) / total_served
 
-        # For service_duration, we've already calculated and stored it as an integer
+
         avg_service_duration = sum(token.service_duration or 0 for token in served_tokens) / total_served / 60
 
         total_recalls = sum(token.recall_count or 0 for token in all_tokens)
@@ -1404,12 +1388,12 @@ def enhanced_analytics():
         total_recalls = 0
         total_skips = 0
 
-    # Time-based analytics
+    # Time analytics
     day_stats = {}
     hour_stats = {}
 
     for token in all_tokens:
-        # Day of week stats
+        # Day stats
         day = token.day_of_week
         if day not in day_stats:
             day_stats[day] = {'count': 0, 'served': 0, 'skipped': 0}
@@ -1420,7 +1404,7 @@ def enhanced_analytics():
         elif token.status == 'SKIPPED' or token.skip_count > 0:
             day_stats[day]['skipped'] += 1
 
-        # Hour of day stats
+        # Hour stats
         hour = token.hour_of_day
         if hour not in hour_stats:
             hour_stats[hour] = {'count': 0, 'served': 0, 'skipped': 0}
@@ -1431,7 +1415,7 @@ def enhanced_analytics():
         elif token.status == 'SKIPPED' or token.skip_count > 0:
             hour_stats[hour]['skipped'] += 1
 
-    # Reason analytics with more details
+    # Reason analytics
     reason_stats = {}
     for token in all_tokens:
         reason = token.visit_reason
@@ -1460,7 +1444,7 @@ def enhanced_analytics():
         elif token.status == 'PENDING':
             reason_stats[reason]['pending'] += 1
 
-    # Calculate averages for each reason
+    # Reason averages
     for reason, stats in reason_stats.items():
         if stats['served'] > 0:
             stats['avg_waiting_time'] = stats['total_waiting_time'] / stats['served']
@@ -1488,7 +1472,7 @@ def enhanced_analytics():
                         recovery_rate=recovery_rate,
                         avg_recovery_time=avg_recovery_time)
 
-# Employee Management Routes
+# Employee routes
 @app.route('/manage-employees')
 def manage_employees():
     if not is_admin() and 'employee_id' not in session:
@@ -1514,20 +1498,20 @@ def add_employee():
     password = request.form.get('password')
     is_active = 'is_active' in request.form
 
-    # Check if employee_id already exists
+    # Check for duplicates
     existing_employee = Employee.query.filter_by(employee_id=employee_id).first()
     if existing_employee:
         flash(f'Employee ID {employee_id} already exists', 'error')
         return redirect(url_for('manage_employees'))
 
-    # Create new employee
+    # Create employee
     new_employee = Employee(
         employee_id=employee_id,
         name=name,
         role=role,
         is_active=is_active
     )
-    # Set password (this will hash it)
+    # Set password
     new_employee.set_password(password)
 
     db.session.add(new_employee)
@@ -1553,7 +1537,7 @@ def update_employee(employee_id):
 
     employee = Employee.query.get_or_404(employee_id)
 
-    # Check if employee_id is being changed and if it already exists
+    # Check ID change
     new_employee_id = request.form.get('employee_id')
     if new_employee_id != employee.employee_id:
         existing_employee = Employee.query.filter_by(employee_id=new_employee_id).first()
@@ -1561,13 +1545,13 @@ def update_employee(employee_id):
             flash(f'Employee ID {new_employee_id} already exists', 'error')
             return redirect(url_for('edit_employee', employee_id=employee_id))
 
-    # Update employee details
+    # Update employee
     employee.employee_id = new_employee_id
     employee.name = request.form.get('name')
     employee.role = request.form.get('role')
     employee.is_active = 'is_active' in request.form
 
-    # Only update password if provided
+    # Update password
     password = request.form.get('password')
     if password and password.strip():
         employee.set_password(password)
@@ -1591,7 +1575,7 @@ def toggle_employee_status(employee_id):
     flash(f'Employee {employee.name} {status} successfully', 'success')
     return redirect(url_for('manage_employees'))
 
-# Employee Login Routes
+# Employee login
 @app.route('/employee-login')
 def employee_login():
     return render_template('employee_login.html')
@@ -1608,13 +1592,13 @@ def employee_login_process():
         session['employee_name'] = employee.name
         session['employee_role'] = employee.role
 
-        # Update last login time
+        # Update login time
         employee.last_login = get_ist_time()
         db.session.commit()
 
         flash(f'Welcome, {employee.name}!', 'success')
 
-        # If employee is admin, redirect to admin page
+        # Admin redirect
         if employee.role == 'admin':
             session['is_admin'] = True
             return redirect(url_for('admin'))
@@ -1626,7 +1610,7 @@ def employee_login_process():
 
 @app.route('/employee-logout')
 def employee_logout():
-    # Clear employee session
+    # Clear session
     session.pop('employee_id', None)
     session.pop('employee_name', None)
     session.pop('employee_role', None)
@@ -1654,10 +1638,10 @@ def employee_dashboard():
     next_token = get_next_token()
     pending_tokens = Token.query.filter_by(status='PENDING').order_by(Token.id).all()
 
-    # Get all tokens for filtering in the template
+    # Get tokens
     all_tokens = Token.query.order_by(Token.id.desc()).limit(50).all()
 
-    # Get tokens served by this employee
+    # Get served tokens
     served_tokens = Token.query.filter_by(staff_id=str(employee.id), status='SERVED').order_by(Token.served_at.desc()).limit(10).all()
 
     return render_template('employee_dashboard.html',
@@ -1678,7 +1662,7 @@ def start_duty():
     employee_id = session['employee_id']
     employee = Employee.query.get(employee_id)
 
-    # Set all other employees to not on duty
+    # Update duty status
     Employee.query.filter(Employee.id != employee_id).update({Employee.is_on_duty: False})
 
     employee.is_on_duty = True
@@ -1710,7 +1694,7 @@ def serve_token(token_id):
 
     token = Token.query.get_or_404(token_id)
 
-    # Only pending or skipped tokens can be served
+    # Check token status
     if token.status != 'PENDING' and token.status != 'SKIPPED':
         flash(f'Only pending or skipped tokens can be served. Token {token.token_number} is {token.status}', 'error')
         if is_admin():
@@ -1718,24 +1702,24 @@ def serve_token(token_id):
         else:
             return redirect(url_for('employee_dashboard'))
 
-    # Special handling for previously skipped tokens
+    # Handle skipped tokens
     recovery_time = None
     if token.status == 'SKIPPED':
-        # Calculate recovery time (time between skipping and serving)
+        # Calculate recovery time
         if token.last_skipped_at:
             current_time = get_ist_time()
 
-            # Handle timezone differences
+            # Handle timezones
             if token.last_skipped_at.tzinfo is None and current_time.tzinfo is not None:
-                # last_skipped_at is naive, current_time is aware
+
                 current_time_naive = current_time.replace(tzinfo=None)
                 recovery_delta = current_time_naive - token.last_skipped_at
             elif token.last_skipped_at.tzinfo is not None and current_time.tzinfo is None:
-                # last_skipped_at is aware, current_time is naive
+
                 last_skipped_at_naive = token.last_skipped_at.replace(tzinfo=None)
                 recovery_delta = current_time - last_skipped_at_naive
             else:
-                # Both are either naive or aware
+
                 recovery_delta = current_time - token.last_skipped_at
 
             recovery_time = int(recovery_delta.total_seconds())
@@ -1751,33 +1735,33 @@ def serve_token(token_id):
 
         flash(f'Serving previously skipped token {token.token_number}. Token was skipped {token.skip_count} times.', 'info')
 
-    # If there's a current token, mark it as served
+    # Mark current token as served
     settings = get_settings()
     current_token = get_current_token()
     if current_token:
         current_token.status = 'SERVED'
         current_token.served_at = get_ist_time()
 
-        # Record which employee served this token
+        # Record employee
         if 'employee_id' in session:
             employee_id = session['employee_id']
             current_token.staff_id = str(employee_id)
 
-            # Update employee statistics
+            # Update stats
             employee = Employee.query.get(employee_id)
             if employee:
                 employee.tokens_served += 1
 
-                # Update average service time
+                # Update avg time
                 if current_token.service_duration:
                     if employee.tokens_served == 1:
                         employee.avg_service_time = current_token.service_duration / 60  # Convert to minutes
                     else:
-                        # Weighted average to smooth out the values
+                        # Weighted average
                         employee.avg_service_time = (employee.avg_service_time * (employee.tokens_served - 1) +
                                                  current_token.service_duration / 60) / employee.tokens_served
 
-        # Calculate service duration in seconds
+        # Calculate duration
         if current_token.created_at:
 
             if current_token.created_at.tzinfo is None:
@@ -1791,11 +1775,11 @@ def serve_token(token_id):
 
         db.session.commit()
 
-    # Set the selected token as current
+    # Set current token
     settings.current_token_id = token.id
     db.session.commit()
 
-    # Broadcast token update to all connected clients
+    # Broadcast update
     broadcast_token_update()
 
     flash(f'Now serving token {token.token_number}', 'success')
@@ -1806,25 +1790,25 @@ def serve_token(token_id):
     else:
         return redirect(url_for('employee_dashboard'))
 
-# User Guide Route - Only accessible to authenticated users
+# User guide
 @app.route('/user-guide')
 def user_guide():
-    # Check if user is authenticated (either admin or employee)
+    # Check auth
     if not is_admin() and 'employee_id' not in session:
         flash('Access denied', 'error')
         return redirect(url_for('index'))
 
-    # Read the markdown file
+    # Load guide
     try:
         with open('QMS_User_Guide.md', 'r') as file:
             content = file.read()
 
-        # Convert markdown to HTML
+        # Convert to HTML
         try:
             import markdown
             html_content = markdown.markdown(content, extensions=['tables', 'toc'])
         except ImportError:
-            # If markdown module is not available, just use the raw content
+            # Fallback
             html_content = f'<pre>{content}</pre>'
 
         return render_template('user_guide.html', content=html_content)
@@ -1842,37 +1826,37 @@ def skip_token():
 
     current_token = get_current_token()
     if current_token:
-        # Mark the current token as SKIPPED
+        # Mark as skipped
         current_token.status = 'SKIPPED'
 
-        # Store the previous status in case we need to recover
+        # Store previous status
         current_token.previous_status = 'PENDING' if not current_token.previous_status else current_token.status
 
-        # Increment skip count and record skip time
+        # Update skip info
         current_token.skip_count += 1
         current_token.last_skipped_at = get_ist_time()
 
-        # Record which employee skipped this token
+        # Record employee
         if 'employee_id' in session:
             employee_id = session['employee_id']
-            # We'll reuse the staff_id field to track who performed the action
-            if not current_token.staff_id:  # Only set if not already set
+
+            if not current_token.staff_id:
                 current_token.staff_id = str(employee_id)
 
-        # Find the next token to serve
+        # Find next token
         next_token = get_next_token()
 
-        # Clear the current token
+        # Clear current token
         settings = get_settings()
         settings.current_token_id = 0
         db.session.commit()
 
-        # If there's a next token available, set it as the current token
+        # Set next token
         if next_token:
             settings.current_token_id = next_token.id
             db.session.commit()
 
-        # Broadcast token update to all connected clients
+        # Broadcast update
         broadcast_token_update()
 
         flash(f'Token {current_token.token_number} has been skipped', 'warning')
@@ -1893,7 +1877,7 @@ def recover_token(token_id):
 
     token = Token.query.get_or_404(token_id)
 
-    # Only skipped tokens can be recovered
+    # Check token status
     if token.status != 'SKIPPED':
         flash(f'Only skipped tokens can be recovered. Token {token.token_number} is {token.status}', 'error')
         if is_admin():
@@ -1901,27 +1885,27 @@ def recover_token(token_id):
         else:
             return redirect(url_for('employee_dashboard'))
 
-    # Calculate recovery time (time between skipping and recovering)
+    # Calculate recovery time
     if token.last_skipped_at:
         current_time = get_ist_time()
 
-        # Handle timezone differences
+        # Handle timezones
         if token.last_skipped_at.tzinfo is None and current_time.tzinfo is not None:
-            # last_skipped_at is naive, current_time is aware
+
             current_time_naive = current_time.replace(tzinfo=None)
             recovery_delta = current_time_naive - token.last_skipped_at
         elif token.last_skipped_at.tzinfo is not None and current_time.tzinfo is None:
-            # last_skipped_at is aware, current_time is naive
+
             last_skipped_at_naive = token.last_skipped_at.replace(tzinfo=None)
             recovery_delta = current_time - last_skipped_at_naive
         else:
-            # Both are either naive or aware
+
             recovery_delta = current_time - token.last_skipped_at
 
         recovery_time = int(recovery_delta.total_seconds())
         token.recovery_time = recovery_time
 
-    # Change status back to PENDING
+    # Reset status
     token.status = 'PENDING'
     db.session.commit()
 
@@ -1941,7 +1925,7 @@ def print_token_json(token_id):
     token = Token.query.get_or_404(token_id)
     formatted_date = token.created_at.strftime('%Y-%m-%d %H:%M')
 
-    # Create a simple dictionary using the same format as your working simple test
+    # Format print data
     print_data = {
         "0": {
             "type": 0,
@@ -1976,7 +1960,7 @@ def print_token_json(token_id):
         }
     }
 
-    # Use jsonify the same way as your working function
+
     return jsonify(print_data)
 
 @app.route('/api/print-test-simple')
@@ -1994,7 +1978,7 @@ def print_test_simple():
 @app.route('/print-test')
 def print_test():
     settings = get_settings()
-    # Only show the print test page if thermal printing is enabled
+    # Check print mode
     if not settings.use_thermal_printer:
         flash('Thermal printing is currently disabled by the administrator', 'warning')
         return redirect(url_for('index'))
@@ -2145,7 +2129,7 @@ def print_token_static(token_id):
     return jsonify(print_data)
 @app.route('/api/print-exact-test')#will link in simple print test
 def print_exact_test():
-    # This matches EXACTLY the PHP example from the instructions
+    # PHP example format
     a = {
         "0": {
             "type": 0,
@@ -2164,11 +2148,11 @@ def print_exact_test():
 
     return jsonify(a)
 if __name__ == '__main__':
-    # Only use debug mode and unsafe werkzeug in development
+    # Set debug mode
     debug_mode = not app.config['PRODUCTION']
 
     if debug_mode:
         socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
     else:
-        # Production mode - no debug, no unsafe werkzeug
+        # Production mode
         socketio.run(app, debug=False)

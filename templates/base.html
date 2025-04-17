@@ -1,4 +1,4 @@
-<!-- templates/base.html -->
+b <!-- Base template -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,7 +31,7 @@
             color: #6c757d;
         }
 
-        /* Token status header with LIVE indicator */
+        /* LIVE indicator */
         .token-status-header {
             display: flex;
             justify-content: center;
@@ -75,7 +75,7 @@
             margin-top: 20px;
         }
 
-        /* Styles for improved action button hierarchy */
+        /* Action button styles */
         .token-actions-container {
             padding: 10px;
             border-radius: 8px;
@@ -99,7 +99,7 @@
             margin-bottom: 15px;
         }
 
-        /* Queue status indicator styling */
+        /* Queue status */
         .queue-status-indicator .badge {
             font-size: 1.1rem;
             padding: 8px 16px;
@@ -107,7 +107,7 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* Real-time notification styles */
+        /* Notifications */
         .token-update-notification {
             position: fixed;
             bottom: 20px;
@@ -130,7 +130,7 @@
             transform: translateY(0);
         }
 
-        /* Action confirmation animation */
+        /* Action animation */
         .action-success {
             animation: pulse-success 1s;
         }
@@ -153,15 +153,15 @@
 <body>
     <div class="container">
         <div class="text-center">
-            <!-- Updated logo path using url_for -->
+            <!-- Logo -->
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
-            <!-- Fallback if logo doesn't exist -->
+            <!-- Logo fallback -->
             <noscript>
                 <h1 class="display-4">Token Queue System</h1>
             </noscript>
         </div>
 
-        <!-- Real-time notification element -->
+        <!-- Notification element -->
         <div class="token-update-notification" id="tokenUpdateNotification" role="alert">
             Token status updated
         </div>
@@ -177,12 +177,12 @@
             {% endif %}
         {% endwith %}
 
-        <!-- Main content -->
+        <!-- Content -->
         {% block content %}{% endblock %}
 
         <footer class="text-center">
             <p>Token Queue Management System &copy; {{ now() }}</p>
-            <!-- Add this to the base.html file in the footer section, just before the closing footer tag -->
+            <!-- Thermal printer link -->
 
             {% if settings and settings.use_thermal_printer and (session.is_admin or session.employee_id) %}
             <div class="text-center mt-2">
@@ -198,7 +198,7 @@
     <!-- Socket.IO client library -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
-    <!-- Script to handle missing logo -->
+    <!-- Logo fallback -->
     <script>
         document.querySelector('.logo').addEventListener('error', function() {
             this.style.display = 'none';
@@ -209,28 +209,27 @@
         });
     </script>
 
-    <!-- Socket.IO connection and event handling -->
+    <!-- Socket.IO events -->
     <script>
-        // Connect to the Socket.IO server
+        // Connect to Socket.IO
         const socket = io();
 
-        // Listen for queue status updates
+        // Listen for updates
         socket.on('queue_status', function(data) {
             console.log('Queue status update received:', data);
             updateQueueDisplay(data);
         });
 
-        // Function to update the queue display
-        // Function to update the queue display - update to handle skipped tokens
+        // Update queue display
         function updateQueueDisplay(data) {
             let hasChanged = false;
             let notificationMessage = '';
 
-            // Update current token display if it exists on the page
+            // Update current token
             const currentTokenElement = document.querySelector('.current-token');
             if (currentTokenElement) {
                 if (data.current_token) {
-                    // Check if token has changed
+                    // Check for changes
                     if (currentTokenElement.textContent !== data.current_token.token_number) {
                         hasChanged = true;
                         notificationMessage = `Now serving: ${data.current_token.token_number}`;
@@ -238,7 +237,7 @@
 
                     currentTokenElement.textContent = data.current_token.token_number;
 
-                    // Update customer name and reason if those elements exist
+                    // Update customer info
                     const customerNameElement = document.querySelector('.current-token-info p:nth-child(2)');
                     if (customerNameElement && data.current_token.customer_name) {
                         customerNameElement.textContent = 'Customer: ' + data.current_token.customer_name;
@@ -257,11 +256,11 @@
                 }
             }
 
-            // Update next token display if it exists
+            // Update next token
             const nextTokenElement = document.querySelector('.next-token strong + span');
             if (nextTokenElement) {
                 if (data.next_token) {
-                    // Check if next token has changed
+                    // Check for changes
                     if (nextTokenElement.textContent.trim() !== data.next_token.token_number) {
                         hasChanged = true;
                         if (!notificationMessage) {
@@ -277,10 +276,10 @@
                 }
             }
 
-            // Update skipped tokens list if it exists
+            // Update skipped tokens
             const skippedTokensListElement = document.getElementById('skippedTokensList');
             if (skippedTokensListElement && data.skipped_tokens) {
-                // Check if there was any change in skipped tokens
+                // Check for changes
                 const currentSkippedTokensHtml = skippedTokensListElement.innerHTML;
                 let newSkippedTokensHtml = '';
 
@@ -297,9 +296,9 @@
 
                 if (currentSkippedTokensHtml !== newSkippedTokensHtml) {
                     skippedTokensListElement.innerHTML = newSkippedTokensHtml;
-                    // If a token was just skipped, we should notify
+                    // Notify if recently skipped
                     if (data.skipped_tokens.length > 0 && !notificationMessage) {
-                        // Check if the first skipped token is recent (within the last 10 seconds)
+                        // Check if recent
                         const skippedAt = new Date(data.skipped_tokens[0].skipped_at);
                         const now = new Date();
                         if ((now - skippedAt) / 1000 < 10) {
@@ -310,7 +309,7 @@
                 }
             }
 
-            // Update queue status indicator if it exists
+            // Update queue status
             const queueStatusElement = document.querySelector('.queue-status-indicator .badge');
             if (queueStatusElement) {
                 const wasActive = queueStatusElement.classList.contains('bg-success');
@@ -328,43 +327,43 @@
                 }
             }
 
-            // Show notification if something changed
+            // Show notification
             if (hasChanged && notificationMessage) {
                 showNotification(notificationMessage);
             }
         }
 
-        // Function to show notification
+        // Show notification
         function showNotification(message) {
             const notification = document.getElementById('tokenUpdateNotification');
             notification.textContent = message;
             notification.classList.add('show');
 
-            // Play notification sound
+            // Play sound
             playNotificationSound();
 
-            // Hide notification after 5 seconds
+            // Auto-hide
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 5000);
         }
 
-        // Function to show visual feedback for successful actions
+        // Show action feedback
         function showActionSuccess(element) {
             if (!element) return;
 
-            // Add success animation class
+            // Add animation
             element.classList.add('action-success');
 
-            // Remove class after animation completes
+            // Remove animation
             setTimeout(() => {
                 element.classList.remove('action-success');
             }, 1000);
         }
 
-        // Function to play notification sound
+        // Play sound
         function playNotificationSound() {
-            // Create audio element
+            // Create audio
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.volume = 0.5;
             audio.play().catch(e => console.log('Error playing sound:', e));

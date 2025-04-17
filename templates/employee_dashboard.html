@@ -1,4 +1,4 @@
-<!-- templates/employee_dashboard.html -->
+<!-- Employee dashboard -->
 {% extends 'base.html' %}
 
 {% block content %}
@@ -31,7 +31,7 @@
         </div>
     </div>
 
-    <!-- Employee Info Card -->
+    <!-- Employee info -->
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card border-primary h-100">
@@ -131,7 +131,7 @@
         </div>
     </div>
 
-    <!-- Queue Management and Token Generation -->
+    <!-- Queue management -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card border-success">
@@ -197,7 +197,7 @@
         </div>
     </div>
 
-    <!-- Pending Tokens, Skipped Tokens, and History -->
+    <!-- Token lists -->
     <div class="row">
         <div class="col-md-6">
             <div class="card border-warning mb-4">
@@ -262,7 +262,7 @@
                 </div>
             </div>
 
-            <!-- Skipped Tokens Section -->
+            <!-- Skipped tokens -->
             <div class="card border-danger mb-4">
                 <div class="card-header bg-danger text-white">
                     <h5 class="mb-0">Skipped Tokens</h5>
@@ -404,24 +404,24 @@ function toggleCustomReason() {
     }
 }
 
-// Add visual feedback to action buttons
+// Add feedback to buttons
 document.addEventListener('DOMContentLoaded', function() {
-    // Add click handlers to all action buttons
+    // Add click handlers
     const actionButtons = document.querySelectorAll('.card-body a.btn, .card-body button.btn');
 
     actionButtons.forEach(button => {
         button.addEventListener('click', function(e) {
-            // Don't add animation to buttons with confirmation dialogs
+            // Skip buttons with confirmations
             if (this.getAttribute('onclick') && this.getAttribute('onclick').includes('confirm')) {
-                return; // Let the confirmation dialog handle it
+                return;
             }
 
-            // Add visual feedback
+            // Show feedback
             showActionSuccess(this);
         });
     });
 
-    // Initialize Bootstrap tooltips for buttons with title attributes
+    // Init tooltips
     const tooltipTriggerList = document.querySelectorAll('[title]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => {
         return new bootstrap.Tooltip(tooltipTriggerEl, {
@@ -430,29 +430,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Override the Socket.IO queue_status event handler to ensure notification sounds play
+    // Override queue_status handler
     socket.on('queue_status', function(data) {
         console.log('Employee dashboard received queue status update:', data);
 
-        // Get the current state before updating
+        // Get current state
         const currentTokenElement = document.querySelector('.current-token');
         const currentTokenText = currentTokenElement ? currentTokenElement.textContent.trim() : '---';
 
         const nextTokenElement = document.querySelector('.next-token span');
         const nextTokenText = nextTokenElement ? nextTokenElement.textContent.trim() : '---';
 
-        // Call the base updateQueueDisplay function
+        // Update display
         updateQueueDisplay(data);
 
-        // Check if the current token has changed
+        // Check current token
         if (currentTokenElement) {
             const newTokenText = data.current_token ? data.current_token.token_number : '---';
 
             if (currentTokenText !== newTokenText) {
-                // Play notification sound for token changes
+                // Play sound
                 playNotificationSound();
 
-                // Show a notification
+                // Show notification
                 const message = data.current_token ?
                     `Now serving: ${data.current_token.token_number}` :
                     'No active token';
@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     notification.textContent = message;
                     notification.classList.add('show');
 
-                    // Hide notification after 5 seconds
+                    // Auto-hide
                     setTimeout(() => {
                         notification.classList.remove('show');
                     }, 5000);
@@ -470,22 +470,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Check if the next token has changed
+        // Check next token
         if (nextTokenElement) {
             const newNextTokenText = data.next_token ? data.next_token.token_number : '---';
 
-            // If a new token was added to the queue (from no tokens to having a token)
+            // Check for new token
             if (nextTokenText === '---' && newNextTokenText !== '---') {
-                // Play notification sound for new token in queue
+                // Play sound
                 playNotificationSound();
 
-                // Show a notification
+                // Show notification
                 const notification = document.getElementById('tokenUpdateNotification');
                 if (notification) {
                     notification.textContent = `New token in queue: ${newNextTokenText}`;
                     notification.classList.add('show');
 
-                    // Hide notification after 5 seconds
+                    // Auto-hide
                     setTimeout(() => {
                         notification.classList.remove('show');
                     }, 5000);
@@ -494,7 +494,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Add a direct function to play notification sound
+    // Test sound function
     window.playAlertSound = function() {
         playNotificationSound();
     };

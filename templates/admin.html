@@ -448,24 +448,24 @@ function toggleCustomReason() {
     }
 }
 
-// Add visual feedback to action buttons
+// Add feedback to buttons
 document.addEventListener('DOMContentLoaded', function() {
-    // Add click handlers to all action buttons
+    // Add click handlers
     const actionButtons = document.querySelectorAll('.card-body a.btn, .card-body button.btn');
 
     actionButtons.forEach(button => {
         button.addEventListener('click', function(e) {
-            // Don't add animation to buttons with confirmation dialogs
+            // Skip buttons with confirmations
             if (this.getAttribute('onclick') && this.getAttribute('onclick').includes('confirm')) {
-                return; // Let the confirmation dialog handle it
+                return;
             }
 
-            // Add visual feedback
+            // Show feedback
             showActionSuccess(this);
         });
     });
 
-    // Initialize Bootstrap tooltips for buttons with title attributes
+    // Init tooltips
     const tooltipTriggerList = document.querySelectorAll('[title]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => {
         return new bootstrap.Tooltip(tooltipTriggerEl, {

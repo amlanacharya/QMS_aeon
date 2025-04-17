@@ -1,9 +1,11 @@
-<!-- templates/base.html -->
+b <!-- Base template -->
+<!-- Made with ❤️ by Amlan - QMS v1.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="developer" content="Made with ❤️ by Amlan">
     <title>Token Queue System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -31,7 +33,7 @@
             color: #6c757d;
         }
 
-        /* Token status header with LIVE indicator */
+        /* LIVE indicator */
         .token-status-header {
             display: flex;
             justify-content: center;
@@ -75,7 +77,7 @@
             margin-top: 20px;
         }
 
-        /* Styles for improved action button hierarchy */
+        /* Action button styles */
         .token-actions-container {
             padding: 10px;
             border-radius: 8px;
@@ -99,7 +101,7 @@
             margin-bottom: 15px;
         }
 
-        /* Queue status indicator styling */
+        /* Queue status */
         .queue-status-indicator .badge {
             font-size: 1.1rem;
             padding: 8px 16px;
@@ -107,7 +109,7 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* Real-time notification styles */
+        /* Notifications */
         .token-update-notification {
             position: fixed;
             bottom: 20px;
@@ -130,7 +132,7 @@
             transform: translateY(0);
         }
 
-        /* Action confirmation animation */
+        /* Action animation */
         .action-success {
             animation: pulse-success 1s;
         }
@@ -147,21 +149,23 @@
             font-size: 0.9rem;
             border-top: 1px solid #dee2e6;
         }
+
+
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
     <div class="container">
         <div class="text-center">
-            <!-- Updated logo path using url_for -->
+            <!-- Logo -->
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
-            <!-- Fallback if logo doesn't exist -->
+            <!-- Logo fallback -->
             <noscript>
                 <h1 class="display-4">Token Queue System</h1>
             </noscript>
         </div>
 
-        <!-- Real-time notification element -->
+        <!-- Notification element -->
         <div class="token-update-notification" id="tokenUpdateNotification" role="alert">
             Token status updated
         </div>
@@ -177,11 +181,20 @@
             {% endif %}
         {% endwith %}
 
-        <!-- Main content -->
+        <!-- Content -->
         {% block content %}{% endblock %}
 
         <footer class="text-center">
             <p>Token Queue Management System &copy; {{ now() }}</p>
+            <!-- Thermal printer link -->
+
+            {% if settings and settings.use_thermal_printer and (session.is_admin or session.employee_id) %}
+            <div class="text-center mt-2">
+                <a href="{{ url_for('thermal_print_help') }}" class="text-muted small">
+                    <i class="bi bi-printer me-1"></i>Thermal Printer Setup Guide
+                </a>
+            </div>
+            {% endif %}
         </footer>
     </div>
 
@@ -189,7 +202,7 @@
     <!-- Socket.IO client library -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
-    <!-- Script to handle missing logo -->
+    <!-- Logo fallback -->
     <script>
         document.querySelector('.logo').addEventListener('error', function() {
             this.style.display = 'none';
@@ -200,28 +213,30 @@
         });
     </script>
 
-    <!-- Socket.IO connection and event handling -->
+    <!-- Socket.IO events -->
     <script>
-        // Connect to the Socket.IO server
+        // Developer Easter Egg
+        console.log('%c Made with ❤️ by Amlan ', 'background: #222; color: #bada55; font-size: 16px; padding: 10px; border-radius: 5px; font-weight: bold;');
+
+        // Connect to Socket.IO
         const socket = io();
 
-        // Listen for queue status updates
+        // Listen for updates
         socket.on('queue_status', function(data) {
             console.log('Queue status update received:', data);
             updateQueueDisplay(data);
         });
 
-        // Function to update the queue display
-        // Function to update the queue display - update to handle skipped tokens
+        // Update queue display
         function updateQueueDisplay(data) {
             let hasChanged = false;
             let notificationMessage = '';
 
-            // Update current token display if it exists on the page
+            // Update current token
             const currentTokenElement = document.querySelector('.current-token');
             if (currentTokenElement) {
                 if (data.current_token) {
-                    // Check if token has changed
+                    // Check for changes
                     if (currentTokenElement.textContent !== data.current_token.token_number) {
                         hasChanged = true;
                         notificationMessage = `Now serving: ${data.current_token.token_number}`;
@@ -229,7 +244,7 @@
 
                     currentTokenElement.textContent = data.current_token.token_number;
 
-                    // Update customer name and reason if those elements exist
+                    // Update customer info
                     const customerNameElement = document.querySelector('.current-token-info p:nth-child(2)');
                     if (customerNameElement && data.current_token.customer_name) {
                         customerNameElement.textContent = 'Customer: ' + data.current_token.customer_name;
@@ -248,11 +263,11 @@
                 }
             }
 
-            // Update next token display if it exists
+            // Update next token
             const nextTokenElement = document.querySelector('.next-token strong + span');
             if (nextTokenElement) {
                 if (data.next_token) {
-                    // Check if next token has changed
+                    // Check for changes
                     if (nextTokenElement.textContent.trim() !== data.next_token.token_number) {
                         hasChanged = true;
                         if (!notificationMessage) {
@@ -267,14 +282,14 @@
                     nextTokenElement.textContent = '---';
                 }
             }
-            
-            // Update skipped tokens list if it exists
+
+            // Update skipped tokens
             const skippedTokensListElement = document.getElementById('skippedTokensList');
             if (skippedTokensListElement && data.skipped_tokens) {
-                // Check if there was any change in skipped tokens
+                // Check for changes
                 const currentSkippedTokensHtml = skippedTokensListElement.innerHTML;
                 let newSkippedTokensHtml = '';
-                
+
                 if (data.skipped_tokens.length > 0) {
                     for (let i = 0; i < data.skipped_tokens.length; i++) {
                         newSkippedTokensHtml += `<span class="skipped-token-item">${data.skipped_tokens[i].token_number}</span>`;
@@ -285,12 +300,12 @@
                 } else {
                     newSkippedTokensHtml = '<span class="text-muted">None</span>';
                 }
-                
+
                 if (currentSkippedTokensHtml !== newSkippedTokensHtml) {
                     skippedTokensListElement.innerHTML = newSkippedTokensHtml;
-                    // If a token was just skipped, we should notify
+                    // Notify if recently skipped
                     if (data.skipped_tokens.length > 0 && !notificationMessage) {
-                        // Check if the first skipped token is recent (within the last 10 seconds)
+                        // Check if recent
                         const skippedAt = new Date(data.skipped_tokens[0].skipped_at);
                         const now = new Date();
                         if ((now - skippedAt) / 1000 < 10) {
@@ -301,7 +316,7 @@
                 }
             }
 
-            // Update queue status indicator if it exists
+            // Update queue status
             const queueStatusElement = document.querySelector('.queue-status-indicator .badge');
             if (queueStatusElement) {
                 const wasActive = queueStatusElement.classList.contains('bg-success');
@@ -319,43 +334,43 @@
                 }
             }
 
-            // Show notification if something changed
+            // Show notification
             if (hasChanged && notificationMessage) {
                 showNotification(notificationMessage);
             }
         }
 
-        // Function to show notification
+        // Show notification
         function showNotification(message) {
             const notification = document.getElementById('tokenUpdateNotification');
             notification.textContent = message;
             notification.classList.add('show');
 
-            // Play notification sound
+            // Play sound
             playNotificationSound();
 
-            // Hide notification after 5 seconds
+            // Auto-hide
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 5000);
         }
 
-        // Function to show visual feedback for successful actions
+        // Show action feedback
         function showActionSuccess(element) {
             if (!element) return;
 
-            // Add success animation class
+            // Add animation
             element.classList.add('action-success');
 
-            // Remove class after animation completes
+            // Remove animation
             setTimeout(() => {
                 element.classList.remove('action-success');
             }, 1000);
         }
 
-        // Function to play notification sound
+        // Play sound
         function playNotificationSound() {
-            // Create audio element
+            // Create audio
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.volume = 0.5;
             audio.play().catch(e => console.log('Error playing sound:', e));
@@ -376,6 +391,69 @@
                 customReasonInput.value = '';
             }
         }
+
+        // Konami Code Easter Egg
+        (function() {
+            const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+            let konamiIndex = 0;
+
+            document.addEventListener('keydown', function(e) {
+                // Check if the key matches the next key in the Konami code
+                if (e.key.toLowerCase() === konamiCode[konamiIndex].toLowerCase()) {
+                    konamiIndex++;
+
+                    // If the entire code has been entered
+                    if (konamiIndex === konamiCode.length) {
+                        // Reset the index
+                        konamiIndex = 0;
+
+                        // Show the easter egg
+                        const style = 'font-size: 20px; font-weight: bold; color: #ff6b6b; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);';
+                        console.log('%c🎮 Konami Code Activated! 🎮', style);
+                        console.log('%c👨‍💻 QMS System crafted with ❤️ by Amlan 👨‍💻', style);
+
+                        // Create a floating message
+                        const message = document.createElement('div');
+                        message.textContent = 'Made with ❤️ by Amlan';
+                        message.style.position = 'fixed';
+                        message.style.top = '50%';
+                        message.style.left = '50%';
+                        message.style.transform = 'translate(-50%, -50%)';
+                        message.style.background = 'rgba(0, 0, 0, 0.8)';
+                        message.style.color = '#fff';
+                        message.style.padding = '20px 30px';
+                        message.style.borderRadius = '10px';
+                        message.style.fontSize = '24px';
+                        message.style.fontWeight = 'bold';
+                        message.style.zIndex = '9999';
+                        message.style.boxShadow = '0 0 20px rgba(255, 107, 107, 0.7)';
+                        message.style.animation = 'fadeInOut 3s forwards';
+
+                        // Add animation style
+                        const style_el = document.createElement('style');
+                        style_el.textContent = `
+                            @keyframes fadeInOut {
+                                0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                                20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                                80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                                100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+                            }
+                        `;
+                        document.head.appendChild(style_el);
+                        document.body.appendChild(message);
+
+                        // Remove after animation
+                        setTimeout(() => {
+                            document.body.removeChild(message);
+                            document.head.removeChild(style_el);
+                        }, 3000);
+                    }
+                } else {
+                    // Reset if wrong key
+                    konamiIndex = 0;
+                }
+            });
+        })();
     </script>
 </body>
 </html>

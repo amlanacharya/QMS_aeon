@@ -1,4 +1,4 @@
-<!-- templates/index.html -->
+<!-- Customer page -->
 {% extends 'base.html' %}
 
 {% block content %}
@@ -25,8 +25,8 @@
                     {% endif %}
                 </span>
             </div>
-            
-            <!-- New section for skipped tokens -->
+
+            <!-- Skipped tokens -->
             <div class="skipped-tokens mt-3">
                 <div class="skipped-tokens-header">
                     <span class="badge bg-warning text-dark">SKIPPED</span>
@@ -87,7 +87,7 @@
 
 {% block extra_head %}
 <style>
-    /* Styling for the skipped tokens section */
+    /* Skipped tokens */
     .skipped-tokens {
         background-color: #fff8e6;
         border-radius: 8px;
@@ -95,11 +95,11 @@
         margin-top: 15px;
         border: 1px solid #ffe0b2;
     }
-    
+
     .skipped-tokens-header {
         margin-bottom: 8px;
     }
-    
+
     .skipped-token-item {
         font-weight: 500;
         color: #fd7e14;

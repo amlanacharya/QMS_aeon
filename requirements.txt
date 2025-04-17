@@ -10,3 +10,7 @@ eventlet
 gevent
 gevent-websocket
 flask-bcrypt
+
+pytest
+pytest-flask
+pytest-cov
